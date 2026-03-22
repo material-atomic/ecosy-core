@@ -1,0 +1,74 @@
+{
+  "name": "@ecosy/core",
+  "version": "0.1.0",
+  "description": "Lightweight utilities, pub/sub subscriber, and types for TypeScript applications",
+  "license": "MIT",
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/types/index.mjs",
+      "require": "./dist/types/index.js"
+    },
+    "./utilities": {
+      "types": "./dist/utilities/index.d.ts",
+      "import": "./dist/utilities/index.mjs",
+      "require": "./dist/utilities/index.js"
+    },
+    "./subscriber": {
+      "types": "./dist/subscriber.d.ts",
+      "import": "./dist/subscriber.mjs",
+      "require": "./dist/subscriber.js"
+    }
+  },
+  "scripts": {
+    "clean": "rimraf dist",
+    "build": "eslint src/ && rollup -c",
+    "prepublishOnly": "yarn clean && yarn build",
+    "dev": "rollup -c --watch",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write src/",
+    "format:check": "prettier --check src/"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/material-atomic/ecosy-core.git"
+  },
+  "keywords": [
+    "ecosy",
+    "core",
+    "subscriber",
+    "utilities"
+  ],
+  "author": "material-atomic",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@rollup/plugin-terser": "^1.0.0",
+    "@rollup/plugin-typescript": "^12.3.0",
+    "@typescript-eslint/eslint-plugin": "^8.57.1",
+    "@typescript-eslint/parser": "^8.57.1",
+    "eslint": "^10.1.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.5",
+    "glob": "^13.0.6",
+    "prettier": "^3.8.1",
+    "rimraf": "^6.1.3",
+    "rollup": "^4.59.1",
+    "typescript": "^5.9.3"
+  }
+}
