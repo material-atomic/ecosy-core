@@ -65,5 +65,16 @@ export function hasOwnProperty<
   Key extends PropertyKey,
   As = unknown
 >(obj: Obj, key: Key): obj is Obj & Record<Key, As> {
-  return Object.prototype.hasOwnProperty.call(obj, key);
+  if (!obj) {
+    return false;
+  }
+
+  if (!isObjectable(obj)) {
+    return Object.prototype.hasOwnProperty.call(obj, key);
+  }
+
+  return (
+    Object.prototype.hasOwnProperty.call(obj, key) ||
+    key in (obj as Record<PropertyKey, unknown>)
+  );
 }
