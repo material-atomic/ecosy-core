@@ -1,7 +1,7 @@
 {
   "name": "@ecosy/core",
-  "version": "0.1.0",
-  "description": "Lightweight utilities, pub/sub subscriber, and types for TypeScript applications",
+  "version": "0.2.0",
+  "description": "A modular, tree-shakable collection of essential utilities, serialization primitives, and event-driven patterns for modern TypeScript applications",
   "license": "MIT",
   "publishConfig": {
     "access": "public"
@@ -33,6 +33,36 @@
       "types": "./dist/subscriber.d.ts",
       "import": "./dist/subscriber.mjs",
       "require": "./dist/subscriber.js"
+    },
+    "./http": {
+      "types": "./dist/http.d.ts",
+      "import": "./dist/http.mjs",
+      "require": "./dist/http.js"
+    },
+    "./logger": {
+      "types": "./dist/logger.d.ts",
+      "import": "./dist/logger.mjs",
+      "require": "./dist/logger.js"
+    },
+    "./syhemo": {
+      "types": "./dist/syhemo.d.ts",
+      "import": "./dist/syhemo.mjs",
+      "require": "./dist/syhemo.js"
+    },
+    "./serialize": {
+      "types": "./dist/serialize.d.ts",
+      "import": "./dist/serialize.mjs",
+      "require": "./dist/serialize.js"
+    },
+    "./slugify": {
+      "types": "./dist/slugify.d.ts",
+      "import": "./dist/slugify.mjs",
+      "require": "./dist/slugify.js"
+    },
+    "./searchify": {
+      "types": "./dist/searchify.d.ts",
+      "import": "./dist/searchify.mjs",
+      "require": "./dist/searchify.js"
     }
   },
   "scripts": {
@@ -52,8 +82,14 @@
   "keywords": [
     "ecosy",
     "core",
+    "utilities",
     "subscriber",
-    "utilities"
+    "serialize",
+    "http",
+    "logger",
+    "slugify",
+    "searchify",
+    "typescript"
   ],
   "author": "material-atomic",
   "devDependencies": {

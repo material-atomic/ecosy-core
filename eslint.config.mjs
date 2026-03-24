@@ -28,6 +28,8 @@ export default [
       "no-redeclare": "off",
       "eol-last": ["error", "always"],
       "comma-dangle": ["error", "always-multiline"],
+      "@typescript-eslint/no-unused-expressions": "off",
+      "no-async-promise-executor": "off",
     },
   },
   prettier,
