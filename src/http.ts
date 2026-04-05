@@ -1,15 +1,23 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { type FileListLike, flatten, isFileList, objectToFormData } from "@ecosy/core/utilities";
+import { type FileListLike, flatten, isFileList, isLiteralObject, objectToFormData } from "./utilities";
 import { Serialize } from "./serialize";
 
+function getEnv(key: string, defaultValue?: string) {
+  if (typeof process !== "undefined" && isLiteralObject(process.env)) {
+    return process.env[key] ?? defaultValue;
+  }
+
+  return defaultValue;
+}
+
 /** Default base URL for HTTP requests, sourced from `API_URL` env variable. */
-export const DEFAULT_BASE_URL = process.env.API_URL  || "/";
+export const DEFAULT_BASE_URL = getEnv("API_URL", "/");
 /** Authentication token storage key, sourced from `API_AUTH_TOKEN_KEY` env variable. */
-export const API_AUTH_TOKEN_KEY = process.env.API_AUTH_TOKEN_KEY;
+export const API_AUTH_TOKEN_KEY = getEnv("API_AUTH_TOKEN_KEY");
 /** Authentication header name, sourced from `API_AUTH_HEADER_KEY` env variable. */
-export const API_AUTH_HEADER_KEY = process.env.API_AUTH_HEADER_KEY;
+export const API_AUTH_HEADER_KEY = getEnv("API_AUTH_HEADER_KEY");
 /** Authentication header type prefix (e.g. "Bearer"), sourced from `API_AUTH_HEADER_TYPE` env variable. */
-export const API_AUTH_HEADER_TYPE = process.env.API_AUTH_HEADER_TYPE;
+export const API_AUTH_HEADER_TYPE = getEnv("API_AUTH_HEADER_TYPE");
 
 /** Supported HTTP methods. */
 export enum HttpMethod {
@@ -323,7 +331,7 @@ export class Http {
       if (url.match(/^https?:\/\//)) {
         finalURL = url;
       } else {
-        const baseURL = this.baseURL.replace(/\/+$/, "");
+        const baseURL = this.baseURL?.replace(/\/+$/, "");
         const cleanURL = url.replace(/^\/+/, "");
         finalURL = `${baseURL}/${cleanURL}`;
       }

@@ -1,5 +1,5 @@
-import { clone, freeze, isEqual, isLiteralObject, merge, ucfirst } from "@ecosy/core/utilities";
-import type { Freezable, LiteralObject, PartialLiteral, ToString } from "@ecosy/core/types";
+import { clone, freeze, isEqual, isLiteralObject, merge, ucfirst } from "./utilities";
+import type { Freezable, LiteralObject, PartialLiteral, ToString } from "./types";
 
 export type SubscribeChannel = string;
 export type SubcribeHandler<Payload = never> = [Payload] extends [never]

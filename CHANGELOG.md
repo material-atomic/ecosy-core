@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.1 (2026-04-06)
+
+### Bug Fixes
+
+- **Http**: Replaced direct `process.env` access with a safe `getEnv()` helper that guards against missing `process` (e.g. Edge, Cloudflare Workers)
+- **Http**: Added optional chaining on `this.baseURL?.replace()` to prevent crash when `baseURL` is undefined
+- **Http/Subscriber**: Changed `@ecosy/core/*` subpath imports to relative `./` imports for bundler compatibility
+
+---
+
 ## 0.2.0 (2026-03-25)
 
 ### Features
