@@ -13,14 +13,14 @@ export interface SlugifyOptions {
  * Can be extended or overridden via {@link SlugifyOptions.transformer}.
  */
 export const DEFAULT_TRANSFORMER: Record<string, string> = {
-  "đ": "d",
-  "æ": "ae",
-  "ø": "o",
-  "å": "a",
-  "œ": "oe",
-  "ß": "ss",
-  "þ": "th",
-  "ð": "d",
+  đ: "d",
+  æ: "ae",
+  ø: "o",
+  å: "a",
+  œ: "oe",
+  ß: "ss",
+  þ: "th",
+  ð: "d",
 };
 
 /**

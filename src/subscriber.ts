@@ -6,8 +6,8 @@ export type SubcribeHandler<Payload = never> = [Payload] extends [never]
   ? () => void
   : (payload: Payload) => void;
 
-class SubscribeListener extends Set<SubcribeHandler> { }
-class SubscribeListeners extends Map<SubscribeChannel, SubscribeListener> { }
+class SubscribeListener extends Set<SubcribeHandler> {}
+class SubscribeListeners extends Map<SubscribeChannel, SubscribeListener> {}
 
 export interface Shallow {
   merge<AsType>(source: unknown, target: unknown, cloneDeep?: (data: unknown) => unknown): AsType;
@@ -24,7 +24,9 @@ export type ExtendedEventExpect = {
 export type WiredEventDomain<Domain extends Record<string, SubscribeChannel>> = {
   [K in keyof Domain]: <Payload>(payload?: Payload) => void;
 } & {
-  [K in keyof Domain as `on${Capitalize<ToString<K>>}`]: <Payload>(handler: SubcribeHandler<Payload>) => () => void;
+  [K in keyof Domain as `on${Capitalize<ToString<K>>}`]: <Payload>(
+    handler: SubcribeHandler<Payload>,
+  ) => () => void;
 };
 
 export type WiredEvents<Events extends ExtendedEventExpect> = {
@@ -162,7 +164,11 @@ export class Subscriber<State extends LiteralObject, Events = {}> {
    * @param signal - Optional AbortSignal to cancel the subscription.
    * @returns A promise that resolves with the first payload dispatched to the channel.
    */
-  async subscribeAsyncOnce<Payload = never>(channel: SubscribeChannel, handler?: SubcribeHandler<Payload>, signal?: AbortSignal) {
+  async subscribeAsyncOnce<Payload = never>(
+    channel: SubscribeChannel,
+    handler?: SubcribeHandler<Payload>,
+    signal?: AbortSignal,
+  ) {
     let unsub: (() => void) | undefined;
     let onAbort: (() => void) | undefined;
 
@@ -181,13 +187,13 @@ export class Subscriber<State extends LiteralObject, Events = {}> {
 
         if (signal) {
           onAbort = () => reject(new Error("Operation cancelled"));
-          signal.addEventListener('abort', onAbort, { once: true });
+          signal.addEventListener("abort", onAbort, { once: true });
         }
       });
     } finally {
       unsub?.();
       if (signal && onAbort) {
-        signal.removeEventListener('abort', onAbort);
+        signal.removeEventListener("abort", onAbort);
       }
     }
   }
@@ -239,5 +245,5 @@ export class Subscriber<State extends LiteralObject, Events = {}> {
     }
 
     return $instance as Instance & Freezable<WiredEvents<ExtendedEvents>>;
-  } 
+  }
 }

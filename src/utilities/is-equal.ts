@@ -3,7 +3,7 @@ import { hasOwnProperty, isLiteralObject, isObject } from "./object";
 
 function isEqualArrayBuffer(
   value1: ArrayBuffer | ArrayBufferView,
-  value2: ArrayBuffer | ArrayBufferView
+  value2: ArrayBuffer | ArrayBufferView,
 ) {
   if (value1.byteLength !== value2.byteLength) {
     return false;
@@ -29,43 +29,53 @@ function isEqualArrayBuffer(
 
 const isEqualStrategies = new Map<unknown, (value1: any, value2: any) => boolean>([
   [Date, (value1: Date, value2: Date) => Object.is(value1.getTime(), value2.getTime())],
-  [RegExp, (value1: RegExp, value2: RegExp) => Object.is(value1.source, value2.source) && Object.is(value1.flags, value2.flags)],
+  [
+    RegExp,
+    (value1: RegExp, value2: RegExp) =>
+      Object.is(value1.source, value2.source) && Object.is(value1.flags, value2.flags),
+  ],
   [ArrayBuffer, isEqualArrayBuffer],
-  [Map, (value1: Map<unknown, unknown>, value2: Map<unknown, unknown>) => {
-    if (value1.size !== value2.size) {
-      return false;
-    }
-
-    for (const [key, val] of value1) {
-      if (!value2.has(key) || !isEqual(val, value2.get(key))) {
+  [
+    Map,
+    (value1: Map<unknown, unknown>, value2: Map<unknown, unknown>) => {
+      if (value1.size !== value2.size) {
         return false;
       }
-    }
 
-    return true;
-  }],
-  [Set, (value1: Set<unknown>, value2: Set<unknown>) => {
-    if (value1.size !== value2.size) {
-      return false;
-    }
-
-    for (const item1 of value1) {
-      let hasMatch = false;
-
-      for (const item2 of value2) {
-        if (isEqual(item1, item2)) {
-          hasMatch = true;
-          break;
+      for (const [key, val] of value1) {
+        if (!value2.has(key) || !isEqual(val, value2.get(key))) {
+          return false;
         }
       }
 
-      if (!hasMatch) {
+      return true;
+    },
+  ],
+  [
+    Set,
+    (value1: Set<unknown>, value2: Set<unknown>) => {
+      if (value1.size !== value2.size) {
         return false;
       }
-    }
 
-    return true;
-  }],
+      for (const item1 of value1) {
+        let hasMatch = false;
+
+        for (const item2 of value2) {
+          if (isEqual(item1, item2)) {
+            hasMatch = true;
+            break;
+          }
+        }
+
+        if (!hasMatch) {
+          return false;
+        }
+      }
+
+      return true;
+    },
+  ],
 ]);
 
 /**
@@ -112,7 +122,6 @@ export function isEqual(value1: unknown, value2: unknown): boolean {
   if (ArrayBuffer.isView(value1) && ArrayBuffer.isView(value2)) {
     return isEqualArrayBuffer(value1 as unknown as ArrayBuffer, value2 as unknown as ArrayBuffer);
   }
-
 
   if (value1.constructor && isEqualStrategies.has(value1.constructor)) {
     return isEqualStrategies.get(value1.constructor)!(value1, value2);

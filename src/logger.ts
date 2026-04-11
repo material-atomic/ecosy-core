@@ -105,7 +105,6 @@ const shared: { buffer: LogEntry[]; errors: number; warns: number; total: number
  * ```
  */
 export class Logger {
-
   /**
    * @param context - Label shown in log output, e.g. `[MyModule]`.
    *                  Defaults to `"@ecosy"`.
@@ -113,10 +112,7 @@ export class Logger {
   constructor(private readonly context: string = "@ecosy") {}
 
   private format(level: LogLevel, message: string, ...args: unknown[]): void {
-    const fn =
-      level === "ERROR" ? console.error :
-      level === "WARN" ? console.warn :
-      console.log;
+    const fn = level === "ERROR" ? console.error : level === "WARN" ? console.warn : console.log;
 
     // Buffer log entry for Syhemo monitor (globalThis-backed)
     shared.buffer.push({

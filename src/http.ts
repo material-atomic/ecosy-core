@@ -198,14 +198,12 @@ export class Http {
           Array.isArray(item) &&
           item.length === 2 &&
           typeof item[0] === "string" &&
-          Serialize.Primitive.isPrimitive(item[1])
+          Serialize.Primitive.isPrimitive(item[1]),
       );
     }
 
     if (typeof query === "object" && query !== null) {
-      return Object.values(query).every(
-        (value) => Serialize.Primitive.isPrimitive(value)
-      );
+      return Object.values(query).every((value) => Serialize.Primitive.isPrimitive(value));
     }
 
     return false;
@@ -214,7 +212,7 @@ export class Http {
   getQuery<Params extends Record<string, unknown>>(options: HttpRequest<unknown, Params>): string {
     const { method, body, query } = options;
 
-    const source = (method === HttpMethod.GET && this.isValidQuery(body)) ? body : query;
+    const source = method === HttpMethod.GET && this.isValidQuery(body) ? body : query;
 
     if (!source || typeof source !== "object") {
       return typeof source === "string" ? source : "";
@@ -224,10 +222,10 @@ export class Http {
       return source.toString();
     }
 
-    return Serialize.queryString.stringify(
-      source as Record<string, unknown>,
-      { skipNull: true, skipEmptyString: true }
-    );
+    return Serialize.queryString.stringify(source as Record<string, unknown>, {
+      skipNull: true,
+      skipEmptyString: true,
+    });
   }
 
   /** Type guard that checks whether a body is a `FormData` instance. */
@@ -473,7 +471,7 @@ export class Http {
   get<T = unknown, Query = Record<string, unknown>, E = unknown>(
     url: string,
     query?: Query,
-    options?: Pick<HttpRequest, "headers" | "params" | "signal">
+    options?: Pick<HttpRequest, "headers" | "params" | "signal">,
   ): Promise<HttpResponse<T, E>> {
     return this.request<T, E>({
       ...options,
@@ -487,7 +485,7 @@ export class Http {
   post<T = unknown, Body = unknown, E = unknown>(
     url: string,
     body?: Body,
-    options?: Pick<HttpRequest, "headers" | "params" | "signal" | "query">
+    options?: Pick<HttpRequest, "headers" | "params" | "signal" | "query">,
   ): Promise<HttpResponse<T, E>> {
     return this.request<T, E>({
       ...options,
@@ -501,7 +499,7 @@ export class Http {
   put<T = unknown, Body = unknown, E = unknown>(
     url: string,
     body?: Body,
-    options?: Pick<HttpRequest, "headers" | "params" | "signal" | "query">
+    options?: Pick<HttpRequest, "headers" | "params" | "signal" | "query">,
   ): Promise<HttpResponse<T, E>> {
     return this.request<T, E>({
       ...options,
@@ -515,7 +513,7 @@ export class Http {
   patch<T = unknown, Body = unknown, E = unknown>(
     url: string,
     body?: Body,
-    options?: Pick<HttpRequest, "headers" | "params" | "signal" | "query">
+    options?: Pick<HttpRequest, "headers" | "params" | "signal" | "query">,
   ): Promise<HttpResponse<T, E>> {
     return this.request<T, E>({
       ...options,
@@ -528,7 +526,7 @@ export class Http {
   /** Perform a DELETE request. */
   delete<T = unknown, E = unknown>(
     url: string,
-    options?: Pick<HttpRequest, "headers" | "params" | "signal" | "query">
+    options?: Pick<HttpRequest, "headers" | "params" | "signal" | "query">,
   ): Promise<HttpResponse<T, E>> {
     return this.request<T, E>({
       ...options,
@@ -540,7 +538,7 @@ export class Http {
   /** Perform a HEAD request. */
   head<T = unknown, E = unknown>(
     url: string,
-    options?: Pick<HttpRequest, "headers" | "params" | "signal" | "query">
+    options?: Pick<HttpRequest, "headers" | "params" | "signal" | "query">,
   ): Promise<HttpResponse<T, E>> {
     return this.request<T, E>({
       ...options,
@@ -552,7 +550,7 @@ export class Http {
   /** Perform an OPTIONS request. */
   options<T = unknown, E = unknown>(
     url: string,
-    options?: Pick<HttpRequest, "headers" | "params" | "signal" | "query">
+    options?: Pick<HttpRequest, "headers" | "params" | "signal" | "query">,
   ): Promise<HttpResponse<T, E>> {
     return this.request<T, E>({
       ...options,
@@ -568,11 +566,9 @@ export class Http {
   upload<T = unknown, E = unknown>(
     url: string,
     file: File | File[] | FileListLike,
-    options?: HttpUploadOptions
+    options?: HttpUploadOptions,
   ) {
-    const formData = options?.body 
-      ? objectToFormData(options.body) 
-      : new FormData();
+    const formData = options?.body ? objectToFormData(options.body) : new FormData();
 
     let fileName = options?.name || "file";
 
@@ -668,7 +664,7 @@ export class Http {
               let modifiedResponse: Response = new Response(xhr.responseText, {
                 status: xhr.status,
                 statusText: xhr.statusText,
-                headers: requestHeaders, 
+                headers: requestHeaders,
               });
 
               for (const interceptor of allResInterceptors) {
@@ -799,7 +795,7 @@ export class Http {
 
     return function factory<T, Args extends any[] = [], E = unknown>(
       key: string,
-      method?: HttpMethod | "UPLOAD"
+      method?: HttpMethod | "UPLOAD",
     ): HttpFactory<T, Args, E> {
       const urls = flatten(getEndpoints()) as Record<string, string>;
       const url = urls[key] as string;
@@ -828,7 +824,10 @@ export class Http {
             case "UPLOAD":
               return await instance.upload<T, E>(
                 url,
-                ...(args as unknown as [File | File[] | FileListLike, HttpUploadOptions | undefined])
+                ...(args as unknown as [
+                  File | File[] | FileListLike,
+                  HttpUploadOptions | undefined,
+                ]),
               );
             default:
               return await instance.get<T, Args[0], E>(url, ...args);

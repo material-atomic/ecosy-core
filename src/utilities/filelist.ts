@@ -29,13 +29,11 @@ export interface FileListLike {
 export function isFileList(data: unknown): data is FileListLike {
   return (
     (typeof FileList !== "undefined" && data instanceof FileList) ||
-    (
-      typeof data === "object" &&
+    (typeof data === "object" &&
       data !== null &&
       toString(data) === "[object FileList]" &&
       "length" in data &&
       "item" in data &&
-      isFunction(data.item)
-    )
+      isFunction(data.item))
   );
 }

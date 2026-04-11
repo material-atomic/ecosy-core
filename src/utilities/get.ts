@@ -23,7 +23,7 @@
 export function get<Type = unknown>(
   data: unknown,
   path: string | string[],
-  defaultValue?: Type
+  defaultValue?: Type,
 ): Type {
   // 1. Short-circuit if data is nullish
   if (data === null || data === undefined) {
@@ -35,8 +35,8 @@ export function get<Type = unknown>(
   const keys = Array.isArray(path)
     ? path
     : path
-        .replace(/\[(\d+)]/g, '.$1') // Convert "users[0]" to "users.0"
-        .split('.')
+        .replace(/\[(\d+)]/g, ".$1") // Convert "users[0]" to "users.0"
+        .split(".")
         .filter(Boolean); // Remove empty segments from leading/trailing dots
 
   if (keys.length === 0) {

@@ -74,8 +74,9 @@ export type LiteralObject<Keys extends PropertyKey = PropertyKey> =
   | object;
 
 /** A single-key object mapping `Key` to `Value`. */
-export type AtomicObject<Key extends PropertyKey = PropertyKey, Value = unknown> =
-  { [K in Key]: Value };
+export type AtomicObject<Key extends PropertyKey = PropertyKey, Value = unknown> = {
+  [K in Key]: Value;
+};
 
 /** Generic function type with configurable return type and argument tuple. */
 export type LiteralFunction<R = unknown, A extends unknown[] = unknown[]> = (...args: A) => R;
@@ -95,51 +96,52 @@ export type ExtendedFunction<F = LiteralFunction, O = LiteralObject> = F & O;
  */
 export type Freezable<T> = T extends primitive
   ? T
-  // 1. Functions: use any[] => any to match all signatures
-  : T extends (...args: any[]) => any
+  : // 1. Functions: use any[] => any to match all signatures
+    T extends (...args: any[]) => any
     ? T
-    // 2. Preserve built-in classes (prevent flattening into plain objects)
-    : T extends Date | RegExp | Error | Map<any, any> | Set<any>
+    : // 2. Preserve built-in classes (prevent flattening into plain objects)
+      T extends Date | RegExp | Error | Map<any, any> | Set<any>
       ? T
-      // 3. Arrays (including already-readonly arrays)
-      : T extends ReadonlyArray<infer U>
+      : // 3. Arrays (including already-readonly arrays)
+        T extends ReadonlyArray<infer U>
         ? ReadonlyArray<Freezable<U>>
-        // 4. Plain objects
-        : T extends object
+        : // 4. Plain objects
+          T extends object
           ? { readonly [K in keyof T]: Freezable<T[K]> }
-          // Safe fallback
-          : T;
+          : // Safe fallback
+            T;
 
 /**
  * Deep-partial type that correctly handles built-in generics
  * (`Map`, `Set`, `Promise`, `WeakRef`, etc.) and extended functions.
  */
-export type PartialLiteral<T> = T extends Map<infer K, infer V>
-  ? Map<PartialLiteral<K>, PartialLiteral<V>>
-  : T extends WeakMap<infer K, infer V>
-    ? WeakMap<PartialLiteral<K>, PartialLiteral<V>>
-    : T extends ReadonlyMap<infer K, infer V>
-      ? ReadonlyMap<PartialLiteral<K>, PartialLiteral<V>>
-      : T extends Set<infer U>
-        ? Set<PartialLiteral<U>>
-        : T extends WeakSet<infer U>
-          ? WeakSet<PartialLiteral<U>>
-          : T extends ReadonlySet<infer U>
-            ? ReadonlySet<PartialLiteral<U>>
-            : T extends Promise<infer U>
-              ? Promise<PartialLiteral<U>>
-              : T extends WeakRef<infer U>
-                ? WeakRef<PartialLiteral<U>>
-                : T extends FinalizationRegistry<infer U>
-                  ? FinalizationRegistry<PartialLiteral<U>>
-                  : T extends BuiltInPrimitive
-                    ? T
-                    : T extends ExtendedFunction
-                      ? T extends ExtendedFunction<infer F>
-                      ? F & {
-                        [K in keyof T]?: PartialLiteral<T[K]>;
-                      }
-                        : T
+export type PartialLiteral<T> =
+  T extends Map<infer K, infer V>
+    ? Map<PartialLiteral<K>, PartialLiteral<V>>
+    : T extends WeakMap<infer K, infer V>
+      ? WeakMap<PartialLiteral<K>, PartialLiteral<V>>
+      : T extends ReadonlyMap<infer K, infer V>
+        ? ReadonlyMap<PartialLiteral<K>, PartialLiteral<V>>
+        : T extends Set<infer U>
+          ? Set<PartialLiteral<U>>
+          : T extends WeakSet<infer U>
+            ? WeakSet<PartialLiteral<U>>
+            : T extends ReadonlySet<infer U>
+              ? ReadonlySet<PartialLiteral<U>>
+              : T extends Promise<infer U>
+                ? Promise<PartialLiteral<U>>
+                : T extends WeakRef<infer U>
+                  ? WeakRef<PartialLiteral<U>>
+                  : T extends FinalizationRegistry<infer U>
+                    ? FinalizationRegistry<PartialLiteral<U>>
+                    : T extends BuiltInPrimitive
+                      ? T
+                      : T extends ExtendedFunction
+                        ? T extends ExtendedFunction<infer F>
+                          ? F & {
+                              [K in keyof T]?: PartialLiteral<T[K]>;
+                            }
+                          : T
                         : T extends LiteralObject
                           ? { [K in keyof T]?: PartialLiteral<T[K]> }
                           : T extends Array<infer U>

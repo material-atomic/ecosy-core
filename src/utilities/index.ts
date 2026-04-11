@@ -1,5 +1,11 @@
 export { clone } from "./clone";
-export { defer, deferAsync, type DeferIds, type DeferCallback, type CancelablePromise } from "./defer";
+export {
+  defer,
+  deferAsync,
+  type DeferIds,
+  type DeferCallback,
+  type CancelablePromise,
+} from "./defer";
 export { isFileList, type FileListLike } from "./filelist";
 export { flatten, flattenToArray, escapeRegexKey, type ObjectOf } from "./flatten";
 export { freeze } from "./freeze";

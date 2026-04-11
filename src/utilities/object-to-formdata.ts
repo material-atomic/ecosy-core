@@ -28,7 +28,7 @@ import { isFileList } from "./filelist";
 export function objectToFormData(
   data: unknown,
   formData = new FormData(),
-  parentKey = ""
+  parentKey = "",
 ): FormData {
   // Skip null or undefined values
   if (data === null || data === undefined) {
@@ -38,11 +38,11 @@ export function objectToFormData(
   // 1. Handle Date
   if (data instanceof Date) {
     formData.append(parentKey, data.toISOString());
-  } 
+  }
   // 2. Handle single File or Blob
   else if (data instanceof File || data instanceof Blob) {
     formData.append(parentKey, data);
-  } 
+  }
   // 3. Handle FileList (isomorphic-safe for Node.js)
   else if (isFileList(data)) {
     Array.from(data).forEach((file, index) => {
@@ -57,14 +57,14 @@ export function objectToFormData(
       const arrayKey = parentKey ? `${parentKey}[${index}]` : String(index);
       objectToFormData(item, formData, arrayKey);
     });
-  } 
+  }
   // 5. Handle nested objects
   else if (typeof data === "object") {
     Object.entries(data).forEach(([key, value]) => {
       const propKey = parentKey ? `${parentKey}[${key}]` : key;
       objectToFormData(value, formData, propKey);
     });
-  } 
+  }
   // 6. Handle primitives (string, number, boolean)
   else {
     formData.append(parentKey, String(data));

@@ -96,10 +96,10 @@ export default function searchify(original: string, searchStr: string): SearchRe
 
     while (currentSlugified.length < searchLength && endPosition < originalFiltered.length) {
       const currentChar = originalFiltered[endPosition];
-      
+
       if (currentChar.slugified !== "") {
         currentSlugified += currentChar.slugified;
-        
+
         if (!slugified.startsWith(currentSlugified)) {
           isMatch = false;
           break;
@@ -111,14 +111,14 @@ export default function searchify(original: string, searchStr: string): SearchRe
     if (isMatch && currentSlugified === slugified) {
       const lastChar = originalFiltered[endPosition - 1];
       const matchText = original.substring(firstChar.originIndex, lastChar.originIndex + 1);
-      
+
       result.matches.push(matchText);
       result.positions.push({
         start: firstChar.originIndex,
         length: matchText.length,
       });
 
-      i = endPosition; 
+      i = endPosition;
     } else {
       i++;
     }
@@ -126,4 +126,3 @@ export default function searchify(original: string, searchStr: string): SearchRe
 
   return result;
 }
-

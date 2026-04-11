@@ -1,4 +1,4 @@
-import { monitorEventLoopDelay } from 'node:perf_hooks';
+import { monitorEventLoopDelay } from "node:perf_hooks";
 import { Subscriber } from "./subscriber";
 import { freeze } from "./utilities";
 import { Logger } from "./logger";
@@ -7,17 +7,17 @@ import * as v8 from "v8";
 import * as os from "os";
 
 export interface MemorySnapshot {
-  rss: number;         // MB
-  heapUsed: number;    // MB
-  heapTotal: number;   // MB
-  external: number;    // MB
-  arrayBuffers: number;// MB
+  rss: number; // MB
+  heapUsed: number; // MB
+  heapTotal: number; // MB
+  external: number; // MB
+  arrayBuffers: number; // MB
 }
 
 export interface CpuSnapshot {
   model: string;
   count: number;
-  usage: number;       // 0-100%
+  usage: number; // 0-100%
 }
 
 export interface HeapSnapshot {
@@ -42,7 +42,7 @@ export interface HandleSnapshot {
 }
 
 export interface EventLoopSnapshot {
-  lagMs: number;       // event loop lag in ms
+  lagMs: number; // event loop lag in ms
   min: number;
   max: number;
   mean: number;
@@ -50,7 +50,7 @@ export interface EventLoopSnapshot {
 }
 
 export interface LogRateSnapshot {
-  errors: number;      // since last snapshot
+  errors: number; // since last snapshot
   warns: number;
   total: number;
 }
@@ -58,7 +58,7 @@ export interface LogRateSnapshot {
 export interface HttpSnapshot {
   totalRequests: number;
   recentRequests: number; // since last snapshot
-  avgLatency: number;     // ms
+  avgLatency: number; // ms
 }
 
 export interface DbPoolSnapshot {
@@ -80,9 +80,9 @@ export interface MetricSnapshot {
     platform: string;
     arch: string;
     nodeVersion: string;
-    totalMemory: number;  // MB
-    freeMemory: number;   // MB
-    uptime: number;       // seconds
+    totalMemory: number; // MB
+    freeMemory: number; // MB
+    uptime: number; // seconds
     loadAvg: number[];
   };
 }
@@ -111,11 +111,11 @@ const MB = 1024 * 1024;
 function collectMemory(): MemorySnapshot {
   const mem = process.memoryUsage();
   return {
-    rss: Math.round(mem.rss / MB * 100) / 100,
-    heapUsed: Math.round(mem.heapUsed / MB * 100) / 100,
-    heapTotal: Math.round(mem.heapTotal / MB * 100) / 100,
-    external: Math.round(mem.external / MB * 100) / 100,
-    arrayBuffers: Math.round(mem.arrayBuffers / MB * 100) / 100,
+    rss: Math.round((mem.rss / MB) * 100) / 100,
+    heapUsed: Math.round((mem.heapUsed / MB) * 100) / 100,
+    heapTotal: Math.round((mem.heapTotal / MB) * 100) / 100,
+    external: Math.round((mem.external / MB) * 100) / 100,
+    arrayBuffers: Math.round((mem.arrayBuffers / MB) * 100) / 100,
   };
 }
 
@@ -138,9 +138,7 @@ function collectCpu(): CpuSnapshot {
       idleDelta += curr.idle - prev.idle;
     }
 
-    usage = totalDelta > 0
-      ? Math.round((1 - idleDelta / totalDelta) * 10000) / 100
-      : 0;
+    usage = totalDelta > 0 ? Math.round((1 - idleDelta / totalDelta) * 10000) / 100 : 0;
   }
 
   prevCpuUsage = cpus;
@@ -155,10 +153,10 @@ function collectCpu(): CpuSnapshot {
 function collectHeap(): HeapSnapshot {
   const stats = v8.getHeapStatistics();
   return {
-    totalHeapSize: Math.round(stats.total_heap_size / MB * 100) / 100,
-    usedHeapSize: Math.round(stats.used_heap_size / MB * 100) / 100,
-    heapSizeLimit: Math.round(stats.heap_size_limit / MB * 100) / 100,
-    mallocedMemory: Math.round(stats.malloced_memory / MB * 100) / 100,
+    totalHeapSize: Math.round((stats.total_heap_size / MB) * 100) / 100,
+    usedHeapSize: Math.round((stats.used_heap_size / MB) * 100) / 100,
+    heapSizeLimit: Math.round((stats.heap_size_limit / MB) * 100) / 100,
+    mallocedMemory: Math.round((stats.malloced_memory / MB) * 100) / 100,
     nativeContexts: stats.number_of_native_contexts,
     detachedContexts: stats.number_of_detached_contexts,
   };
@@ -190,7 +188,8 @@ function collectHandles(): HandleSnapshot {
 function collectModules(): { count: number; top: ModuleInfo[] } {
   try {
     // Avoid `require.cache` keyword entirely — Turbopack panics on CjsRequireCacheAccess
-    const cache: Record<string, unknown> = eval("typeof require !== 'undefined' && require.cache") || {};
+    const cache: Record<string, unknown> =
+      eval("typeof require !== 'undefined' && require.cache") || {};
     const keys = Object.keys(cache);
     const count = keys.length;
 
@@ -224,7 +223,7 @@ function collectEventLoop(): EventLoopSnapshot {
     mean: Math.round((histogram.mean / 1e6) * 100) / 100,
     p99: Math.round((histogram.percentile(99) / 1e6) * 100) / 100,
   };
-  
+
   histogram.reset(); // Reset for the next 5-second cycle
   return result;
 }
@@ -244,9 +243,8 @@ export function recordHttpRequest(latencyMs: number) {
 }
 
 function collectHttp(): HttpSnapshot {
-  const avgLatency = httpLatencySamples > 0
-    ? Math.round(httpLatencySum / httpLatencySamples * 100) / 100
-    : 0;
+  const avgLatency =
+    httpLatencySamples > 0 ? Math.round((httpLatencySum / httpLatencySamples) * 100) / 100 : 0;
 
   const result: HttpSnapshot = {
     totalRequests: httpTotalRequests,
@@ -312,10 +310,7 @@ export class Syhemo extends Subscriber<SyhemoState, SyhemoEvents> {
   private readonly logger = new Logger("Syhemo");
 
   constructor() {
-    super(
-      { current: null, snapshots: [], logs: [], started: false },
-      syhemoEvents,
-    );
+    super({ current: null, snapshots: [], logs: [], started: false }, syhemoEvents);
   }
 
   start(options: SyhemoOptions = {}) {
@@ -345,9 +340,8 @@ export class Syhemo extends Subscriber<SyhemoState, SyhemoEvents> {
     try {
       const snapshot = collectSnapshot();
       const prev = this.getState().snapshots;
-      const snapshots = prev.length >= MAX_SNAPSHOTS
-        ? [...prev.slice(1), snapshot]
-        : [...prev, snapshot];
+      const snapshots =
+        prev.length >= MAX_SNAPSHOTS ? [...prev.slice(1), snapshot] : [...prev, snapshot];
 
       // Get latest logs from Logger buffer
       const logs = Logger.getLogs();

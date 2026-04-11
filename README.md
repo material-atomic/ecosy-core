@@ -12,18 +12,18 @@ yarn add @ecosy/core
 
 ### Subpath Imports
 
-| Entry point | Description |
-|--|--|
-| `@ecosy/core` | Re-exports all modules |
-| `@ecosy/core/types` | TypeScript type utilities |
-| `@ecosy/core/utilities` | Runtime utility functions |
-| `@ecosy/core/subscriber` | Pub/sub event emitter with state |
-| `@ecosy/core/http` | HTTP client with interceptors and upload |
-| `@ecosy/core/logger` | Structured logger with log levels |
-| `@ecosy/core/syhemo` | System health monitor |
-| `@ecosy/core/serialize` | Serialization engine (JSON, URL, queryString) |
-| `@ecosy/core/slugify` | Unicode-safe string slugifier |
-| `@ecosy/core/searchify` | Diacritic-insensitive fuzzy search |
+| Entry point              | Description                                   |
+| ------------------------ | --------------------------------------------- |
+| `@ecosy/core`            | Re-exports all modules                        |
+| `@ecosy/core/types`      | TypeScript type utilities                     |
+| `@ecosy/core/utilities`  | Runtime utility functions                     |
+| `@ecosy/core/subscriber` | Pub/sub event emitter with state              |
+| `@ecosy/core/http`       | HTTP client with interceptors and upload      |
+| `@ecosy/core/logger`     | Structured logger with log levels             |
+| `@ecosy/core/syhemo`     | System health monitor                         |
+| `@ecosy/core/serialize`  | Serialization engine (JSON, URL, queryString) |
+| `@ecosy/core/slugify`    | Unicode-safe string slugifier                 |
+| `@ecosy/core/searchify`  | Diacritic-insensitive fuzzy search            |
 
 ### Types
 
@@ -51,6 +51,7 @@ Configurable HTTP client with request/response interceptors, auth token injectio
 ### Serialize
 
 Centralized serialization engine:
+
 - **`Serialize.Primitive`** — Type guards and deep normalization (BigInt, Date, undefined stripping)
 - **`Serialize.JSON`** — Safe stringify/parse that never throws
 - **`Serialize.URL`** — Robust encode/decode with `:param` URL building
@@ -67,12 +68,12 @@ Full API reference and guides: **[docs.ecosy.io](https://docs.ecosy.io)**
 
 ## Related Packages
 
-| Package | Description |
-|--|--|
-| [`@ecosy/datekit`](https://github.com/material-atomic/ecosy-datekit) | Headless date utilities (Dateify, Dayify, Monthify, Yearify) |
-| [`@ecosy/mailer`](https://github.com/material-atomic/ecosy-mailer) | Email engine with template formatting, retry, and rate limiting |
-| [`@ecosy/store`](https://github.com/material-atomic/ecosy-store) | State management with slices and reducers |
-| [`@ecosy/react`](https://github.com/material-atomic/ecosy-react) | React hooks for `@ecosy/store` |
+| Package                                                              | Description                                                     |
+| -------------------------------------------------------------------- | --------------------------------------------------------------- |
+| [`@ecosy/datekit`](https://github.com/material-atomic/ecosy-datekit) | Headless date utilities (Dateify, Dayify, Monthify, Yearify)    |
+| [`@ecosy/mailer`](https://github.com/material-atomic/ecosy-mailer)   | Email engine with template formatting, retry, and rate limiting |
+| [`@ecosy/store`](https://github.com/material-atomic/ecosy-store)     | State management with slices and reducers                       |
+| [`@ecosy/react`](https://github.com/material-atomic/ecosy-react)     | React hooks for `@ecosy/store`                                  |
 
 ## License
 

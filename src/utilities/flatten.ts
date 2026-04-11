@@ -26,7 +26,7 @@ export type ObjectOf<T = unknown> = Record<string, T>;
 export function flatten(
   data: unknown,
   prefix = "",
-  acc: Record<string, unknown> = {}
+  acc: Record<string, unknown> = {},
 ): Record<string, unknown> {
   if (typeof data !== "object" || data === null) {
     if (prefix) acc[prefix] = data;
@@ -70,14 +70,14 @@ export function flatten(
  */
 export function flattenToArray(data: Record<string, unknown>, path: string) {
   const prefix = `${path}.`;
-  
+
   const dataOfPath = Object.entries(data).filter(([key]) => key.startsWith(prefix));
 
   if (!dataOfPath.length) return [];
 
   // Get the first key, strip the prefix. e.g. "0.name"
   const firstKeyRemain = dataOfPath[0][0].replace(prefix, "");
-  
+
   // Determine if it's an array by checking whether the first node is a numeric index
   const firstNode = firstKeyRemain.split(".")[0];
   const isArrayType = !isNaN(Number(firstNode));
@@ -91,23 +91,26 @@ export function flattenToArray(data: Record<string, unknown>, path: string) {
   }
 
   // Reconstruct array from "0.name" format
-  const resultObj = dataOfPath.reduce((acc, [key, value]) => {
-    const cleanedKey = key.replace(prefix, ""); // "0.contact.email"
-    const parts = cleanedKey.split(".");
-    
-    const index = parts[0]; // "0"
-    const remain = parts.slice(1).join("."); // "contact.email"
+  const resultObj = dataOfPath.reduce(
+    (acc, [key, value]) => {
+      const cleanedKey = key.replace(prefix, ""); // "0.contact.email"
+      const parts = cleanedKey.split(".");
 
-    if (!acc[index]) acc[index] = {};
+      const index = parts[0]; // "0"
+      const remain = parts.slice(1).join("."); // "contact.email"
 
-    if (remain) {
-      acc[index][remain] = value;
-    } else {
-      acc[index] = value as any; // Handle primitive arrays
-    }
-    
-    return acc;
-  }, {} as Record<string, any>);
+      if (!acc[index]) acc[index] = {};
+
+      if (remain) {
+        acc[index][remain] = value;
+      } else {
+        acc[index] = value as any; // Handle primitive arrays
+      }
+
+      return acc;
+    },
+    {} as Record<string, any>,
+  );
 
   return Object.values(resultObj);
 }

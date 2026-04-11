@@ -34,13 +34,7 @@ const cloneStrateries = {
   },
 };
 
-const Strateries = [
-  Date,
-  RegExp,
-  Map,
-  Set,
-  ArrayBuffer,
-];
+const Strateries = [Date, RegExp, Map, Set, ArrayBuffer];
 
 const NumberTypedArray = [
   Int8Array,
@@ -54,7 +48,7 @@ const NumberTypedArray = [
   Float64Array,
   BigInt64Array,
   BigUint64Array,
-  DataView
+  DataView,
 ];
 
 const DoNotClone = (() => {
@@ -78,11 +72,14 @@ const DoNotClone = (() => {
       typeof AbortController !== "undefined" && AbortController,
       typeof Node !== "undefined" && Node,
       typeof FileList !== "undefined" && FileList,
-    ])
+    ]),
   );
 })();
 
-function isConstructor<Targets extends unknown[]>(constructor: unknown, targets: Targets): constructor is Targets[number] {
+function isConstructor<Targets extends unknown[]>(
+  constructor: unknown,
+  targets: Targets,
+): constructor is Targets[number] {
   return targets.includes(constructor);
 }
 
@@ -103,15 +100,12 @@ function isConstructor<Targets extends unknown[]>(constructor: unknown, targets:
  * original.b.c; // still 2
  * ```
  */
-export function clone<DataType>(
-  data: DataType,
-  cache = new WeakMap<object, unknown>()
-): DataType {
+export function clone<DataType>(data: DataType, cache = new WeakMap<object, unknown>()): DataType {
   if (
     !isObjectable(data) ||
     isFunction(data) ||
     hasOwnProperty(data, "$$typeof") ||
-    data.constructor && isConstructor(data.constructor, DoNotClone)
+    (data.constructor && isConstructor(data.constructor, DoNotClone))
   ) {
     return data;
   }
@@ -124,12 +118,16 @@ export function clone<DataType>(
   if (data.constructor && isConstructor(data.constructor, NumberTypedArray)) {
     const itemData = data as unknown as BufferLike;
     const ItemClass = data.constructor as BufferClass;
-    const result = new ItemClass(itemData.buffer.slice(0), itemData.byteOffset, itemData.byteLength) as DataType;
+    const result = new ItemClass(
+      itemData.buffer.slice(0),
+      itemData.byteOffset,
+      itemData.byteLength,
+    ) as DataType;
     cache.set(data, result);
     return result;
   }
 
-  const ItemConstructor = data.constructor as typeof Strateries[number];
+  const ItemConstructor = data.constructor as (typeof Strateries)[number];
 
   if (Strateries.includes(ItemConstructor)) {
     const handleName = ItemConstructor.toString() as keyof typeof cloneStrateries;
@@ -141,7 +139,7 @@ export function clone<DataType>(
 
   // Is Object | Array | Class | Instance | Function
   const result = Array.isArray(data)
-    ? new ((Object.getPrototypeOf(data)?.constructor as ArrayConstructor) || Array)
+    ? new ((Object.getPrototypeOf(data)?.constructor as ArrayConstructor) || Array)()
     : Object.create(Object.getPrototypeOf(data));
   cache.set(data, result);
 

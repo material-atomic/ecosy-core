@@ -93,4 +93,3 @@ export function deferAsync(delay?: number): CancelablePromise {
 
   return promise;
 }
-

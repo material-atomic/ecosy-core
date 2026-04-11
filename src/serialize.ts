@@ -1,6 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Freezable, LiteralObject } from "./types";
-import { freeze, get, hasOwnProperty, isFunction, isLiteralObject, isObjectable } from "./utilities";
+import {
+  freeze,
+  get,
+  hasOwnProperty,
+  isFunction,
+  isLiteralObject,
+  isObjectable,
+} from "./utilities";
 
 type Primitive = string | number | boolean | null | undefined | symbol | bigint;
 
@@ -34,7 +41,10 @@ type SerializePrimitive = Freezable<{
 
 type SerializeJSON = Freezable<{
   stringify: (value: unknown, space?: number) => string;
-  parse: <T = unknown>(text: string, reviver?: ((this: any, key: string, value: any) => any) | undefined) => T | null;
+  parse: <T = unknown>(
+    text: string,
+    reviver?: ((this: any, key: string, value: any) => any) | undefined,
+  ) => T | null;
 }>;
 
 type SerializeURL = Freezable<{
@@ -78,7 +88,7 @@ export class Serialize {
    */
   static interpolate(
     pattern: string,
-    params: Record<string, unknown> | Array<unknown> = {}
+    params: Record<string, unknown> | Array<unknown> = {},
   ): string {
     // Fast-path: skip processing if no placeholders
     if (
@@ -112,7 +122,7 @@ export class Serialize {
   /** Type guards and deep normalization utilities. */
   private static _primitive: SerializePrimitive;
   static get Primitive() {
-    return Serialize._primitive ??= freeze({
+    return (Serialize._primitive ??= freeze({
       isString: (value: unknown): value is string => {
         return typeof value === "string";
       },
@@ -164,14 +174,14 @@ export class Serialize {
         }
 
         return {} as R;
-      }
-    });
+      },
+    }));
   }
 
   /** Safe JSON stringify/parse that never throws. */
   private static _JSON: SerializeJSON;
   static get JSON() {
-    return Serialize._JSON ??= freeze({
+    return (Serialize._JSON ??= freeze({
       stringify: (value: unknown, space?: number) => {
         try {
           const normalized = Serialize.Primitive.normalize(value);
@@ -181,7 +191,10 @@ export class Serialize {
           return "";
         }
       },
-      parse: <T = unknown>(text: string, reviver?: (this: any, key: string, value: any) => any): T | null => {
+      parse: <T = unknown>(
+        text: string,
+        reviver?: (this: any, key: string, value: any) => any,
+      ): T | null => {
         if (!text) {
           return null;
         }
@@ -192,17 +205,17 @@ export class Serialize {
           return null; // Return null instead of throwing to keep the flow alive
         }
       },
-    });
+    }));
   }
 
   /** URL encoding/decoding with malformed-character recovery. */
   private static _URL: SerializeURL;
   static get URL() {
-    return Serialize._URL ??= freeze({
+    return (Serialize._URL ??= freeze({
       encode(value: string, component: boolean | ((value: string) => string) = true): string {
         if (!value) return "";
         if (typeof component === "function") return component(value);
-        
+
         try {
           return component ? encodeURIComponent(value) : encodeURI(value);
         } catch {
@@ -214,10 +227,10 @@ export class Serialize {
       decode: (value: string, component: boolean | ((value: string) => string) = true): string => {
         if (!value) return "";
         if (typeof component === "function") return component(value);
-        
+
         const decoder = component ? decodeURIComponent : decodeURI;
         const normalized = component ? value.replace(/\+/g, "%20") : value;
-        
+
         return normalized.replace(/(%[0-9A-F]{2})+/gi, (match) => {
           try {
             return decoder(match);
@@ -234,23 +247,23 @@ export class Serialize {
         // Single-pass regex replace for maximum speed
         return uri.replace(/:([a-zA-Z\d_]+)/g, (fullMatch, key) => {
           const value = params[key];
-          
+
           // If param is not provided, keep the ":key" placeholder
           if (value === null || value === undefined) {
-            return fullMatch; 
+            return fullMatch;
           }
 
           // Auto-encode the value using the same URL encoder
           return Serialize.URL.encode(String(value), true);
         });
-      }
-    });
+      },
+    }));
   }
 
   /** Query string parse/stringify with configurable array formats. */
   private static _queryString: SerializeQueryString;
   static get queryString() {
-    return Serialize._queryString ??= freeze({
+    return (Serialize._queryString ??= freeze({
       parse(query: string): Record<string, string> {
         if (!query) return {};
         const cleanQuery = query.startsWith("?") ? query.slice(1) : query;
@@ -280,7 +293,7 @@ export class Serialize {
         } = options;
 
         const isValidKey = (k: string) => k.length > 0 && /^[a-zA-Z0-9_\-.[\]]+$/.test(k);
-        
+
         // Internal encode wrapper
         const encoder = (val: string): string => {
           if (!encode) return val;
@@ -293,9 +306,11 @@ export class Serialize {
         const traverse = (prefix: string, obj: unknown) => {
           if (Array.isArray(obj)) {
             if (arrayFormat === "comma" || arrayFormat === "separator") {
-              const validVals = obj.filter(v => v !== null && v !== undefined && v !== "");
+              const validVals = obj.filter((v) => v !== null && v !== undefined && v !== "");
               if (validVals.length > 0) {
-                resultPairs.push(`${encoder(prefix)}=${encoder(validVals.map(String).join(arrayFormatSeparator))}`);
+                resultPairs.push(
+                  `${encoder(prefix)}=${encoder(validVals.map(String).join(arrayFormatSeparator))}`,
+                );
               }
               return;
             }
@@ -334,7 +349,7 @@ export class Serialize {
             resultPairs.push(`${encoder(prefix)}=${encoder(obj.toISOString())}`);
             return;
           }
-          
+
           resultPairs.push(`${encoder(prefix)}=${encoder(String(obj))}`);
         };
 
@@ -349,6 +364,6 @@ export class Serialize {
 
         return resultPairs.join("&");
       },
-    });
+    }));
   }
 }

@@ -2,11 +2,15 @@ import eslint from "@eslint/js";
 import tseslint from "@typescript-eslint/eslint-plugin";
 import tsparser from "@typescript-eslint/parser";
 import prettier from "eslint-config-prettier";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 export default [
   eslint.configs.recommended,
   {
-    files: ["src/**/*.ts"],
+    files: ["src/**/*.{ts,tsx,js,jsx}"],
     languageOptions: {
       parser: tsparser,
       parserOptions: {
@@ -35,5 +39,9 @@ export default [
   prettier,
   {
     ignores: ["dist/", "node_modules/"],
+    parserOptions: {
+      project: true, 
+      tsconfigRootDir: __dirname,
+    },
   },
 ];
