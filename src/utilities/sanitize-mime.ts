@@ -1,5 +1,5 @@
 /** RFC 2045 MIME type pattern: `type/subtype` with optional `;parameter=value`. */
-export const MIME_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9!#$&\-^_.+]*\/[a-zA-Z0-9][a-zA-Z0-9!#$&\-^_.+]*(;\s*[\w.\-]+=[\w.\-]+)*$/;
+export const MIME_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9!#$&\-^_.+]*\/[a-zA-Z0-9][a-zA-Z0-9!#$&\-^_.+]*(;\s*[\w.-]+=[\w.-]+)*$/;
 
 /**
  * Validate and sanitize a MIME type string.

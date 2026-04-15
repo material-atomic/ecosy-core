@@ -39,9 +39,11 @@ export default [
   prettier,
   {
     ignores: ["dist/", "node_modules/"],
-    parserOptions: {
-      project: true, 
-      tsconfigRootDir: __dirname,
+    languageOptions: {
+      parserOptions: {
+        project: true,
+        tsconfigRootDir: __dirname,
+      },
     },
   },
 ];
