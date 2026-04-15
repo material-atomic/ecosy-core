@@ -1,6 +1,6 @@
 import { monitorEventLoopDelay } from "node:perf_hooks";
 import { Subscriber } from "./subscriber";
-import { freeze } from "./utilities";
+import { freeze } from "./utilities/freeze";
 import { Logger } from "./logger";
 import type { LogEntry } from "./logger";
 import * as v8 from "v8";

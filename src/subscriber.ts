@@ -1,4 +1,9 @@
-import { clone, freeze, isEqual, isLiteralObject, merge, ucfirst } from "./utilities";
+import { clone } from "./utilities/clone";
+import { freeze } from "./utilities/freeze";
+import { isEqual } from "./utilities/is-equal";
+import { isLiteralObject } from "./utilities/object";
+import { merge } from "./utilities/merge";
+import { ucfirst } from "./utilities/string";
 import type { Freezable, LiteralObject, PartialLiteral, ToString } from "./types";
 
 export type SubscribeChannel = string;

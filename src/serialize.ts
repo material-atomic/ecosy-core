@@ -1,13 +1,9 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { Freezable, LiteralObject } from "./types";
-import {
-  freeze,
-  get,
-  hasOwnProperty,
-  isFunction,
-  isLiteralObject,
-  isObjectable,
-} from "./utilities";
+import { freeze } from "./utilities/freeze";
+import { get } from "./utilities/get";
+import { hasOwnProperty, isLiteralObject, isObjectable } from "./utilities/object";
+import { isFunction } from "./utilities/is-function";
 
 type Primitive = string | number | boolean | null | undefined | symbol | bigint;
 
