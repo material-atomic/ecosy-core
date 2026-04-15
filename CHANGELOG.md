@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.3.1 (2026-04-15)
+
+### Features
+
+- **HttpRequest.configs**: new pass-through bag for fetch `RequestInit` fields the library does not manage (`credentials`, `cache`, `mode`, `redirect`, `referrer`, `referrerPolicy`, `integrity`, `keepalive`, `priority`, `duplex`) plus framework extensions (`next` for Next.js, `cf` for Cloudflare Workers, `dispatcher` for undici). Unknown keys are silently dropped via allowlist, so compromised callers cannot smuggle arbitrary fields. Lib-level fields (`method`, `headers`, `body`, `signal`) always win.
+
+### Security
+
+- **Http.getURL**: protocol-relative URLs (`//host/…`) are rejected; absolute URLs must use `http:`/`https:` and their origin must match `baseURL` or an entry in the new `allowedOrigins` constructor option. Prevents silent host-hijack via attacker-controlled path strings (class-of-issue behind CVE-2024-39338 in axios).
+- **Http.getURL**: path-param values are now percent-encoded via `Serialize.URL.encode`, so `{id}` with value `"../admin"` can no longer traverse the URL.
+- **Http.request**: credentialed responses (Authorization / Cookie sent) that arrived from a different origin — typically via a server-controlled 3xx redirect — are refused. Guards against token exfil on runtimes that don't auto-strip Authorization on cross-origin redirect.
+- **Http.getToken**: stored token is validated against RFC 7230 header-value charset. A CRLF or control char (e.g. from XSS-written storage) no longer smuggles headers or causes the runtime to silently drop Authorization (fail-open).
+- **Http.getQuery / getURL**: `__proto__`, `constructor`, and `prototype` are stripped from `params`/`query` before serialization, closing a prototype-pollution path to downstream parsers.
+
+### Notes for upgraders
+
+- **Http** constructor now accepts either a base URL string (unchanged form) **or** an `HttpOptions` object (`{ baseURL?, allowedOrigins? }`). `new Http("https://api")` works the same as before. If you call multiple hosts from one instance, pass `allowedOrigins` via the object form.
+- If you were relying on **pre-encoded** path params (e.g. passing `"%20"`), remove the pre-encoding — the library encodes once now.
+- Calls that depended on following redirects across origins while carrying credentials will throw. That was the exploit path this release closes.
+
+---
+
 ## 0.3.0 (2026-04-15)
 
 ### Features
