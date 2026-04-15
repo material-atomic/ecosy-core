@@ -2,12 +2,64 @@
 import { type FileListLike, isFileList } from "./utilities/filelist";
 import { flatten } from "./utilities/flatten";
 import { isFormData, objectToFormData } from "./utilities/formdata";
+import { get } from "./utilities/get";
 import { sanitizeMime } from "./utilities/sanitize-mime";
 import { Serialize } from "./serialize";
 import { getEnv } from "./env";
 
 // Allow XMLHttpRequest in environments that support it (browser, React Native)
 declare var XMLHttpRequest: any;
+
+/** Parse a URL string into its origin, returning `null` if the input is relative or invalid. */
+function safeOrigin(url: string): string | null {
+  try {
+    return new URL(url).origin;
+  } catch {
+    return null;
+  }
+}
+
+/** Reserved keys that must never be honored in user-supplied query / param objects. */
+const UNSAFE_KEYS = new Set(["__proto__", "constructor", "prototype"]);
+
+/**
+ * Keys allowed on {@link HttpRequest.fetch}. Lib-level fields
+ * (`method`, `headers`, `body`, `signal`) are handled separately and
+ * must not appear here — they would let a caller override what the
+ * library has already decided.
+ *
+ * Framework-specific extensions (`next` for Next.js App Router,
+ * `cf` for Cloudflare Workers, `dispatcher` for undici) are allowed
+ * so apps can pass them through without the lib depending on any of
+ * those runtimes.
+ */
+const ALLOWED_FETCH_KEYS: ReadonlySet<string> = new Set([
+  "credentials",
+  "cache",
+  "mode",
+  "redirect",
+  "referrer",
+  "referrerPolicy",
+  "integrity",
+  "keepalive",
+  "priority",
+  "duplex",
+  "window",
+  "next",
+  "cf",
+  "dispatcher",
+]);
+
+/** Strip prototype-pollution vectors from a plain object shallowly. */
+function stripUnsafeKeys<T extends Record<string, unknown>>(source: T): T {
+  const out: Record<string, unknown> = Object.create(null);
+  for (const key of Object.keys(source)) {
+    if (UNSAFE_KEYS.has(key)) continue;
+    out[key] = source[key];
+  }
+  return out as T;
+}
+
 
 /** Default base URL for HTTP requests, sourced from `API_URL` env variable. */
 export const DEFAULT_BASE_URL = getEnv("API_URL", "/");
@@ -56,6 +108,32 @@ export interface HttpRequest<
   query?: Query;
   params?: Params;
   signal?: AbortSignal;
+  /**
+   * Pass-through bag for `fetch`'s `RequestInit` options that the
+   * library does not manage itself (`credentials`, `cache`, `mode`,
+   * `redirect`, `referrer`, `referrerPolicy`, `integrity`, `keepalive`,
+   * `priority`, `duplex`) plus framework extensions (`next` on Next.js,
+   * `cf` on Cloudflare Workers, `dispatcher` on undici).
+   *
+   * Lib-level fields (`method`, `headers`, `body`, `signal`) cannot be
+   * overridden here — they are applied after this bag is spread.
+   * Unknown keys are silently dropped, so a compromised caller cannot
+   * smuggle arbitrary fields into `fetch`.
+   */
+  configs?: Record<string, unknown>;
+}
+
+/** Constructor options for {@link Http}. */
+export interface HttpOptions {
+  /** Base URL prepended to every relative request path. */
+  baseURL?: string;
+  /**
+   * Additional origins (besides `baseURL`'s origin) that absolute URLs
+   * and redirect responses are permitted to reach. Any other origin is
+   * rejected before the request is sent and, for redirects, before the
+   * response body is returned.
+   */
+  allowedOrigins?: ReadonlyArray<string>;
 }
 
 /** Storage adapter interface for reading/writing auth tokens (e.g. `localStorage`). */
@@ -173,6 +251,17 @@ export class Http {
   static authHeaderKey = "Authorization";
   static authHeaderType = "Bearer";
   static authDetectToken = ["localStorage", "sessionStorage", "cookie"];
+  /**
+   * One-shot headers merged into the very next request across all
+   * instances, then cleared. Intended for request-scoped values like
+   * CSRF tokens or correlation IDs that callers don't want to thread
+   * through every call site.
+   *
+   * Note: this is a process-wide mutable static. In concurrent async
+   * contexts (e.g. multiple tenants sharing one process) it is the
+   * caller's responsibility to ensure the set → dispatch → reset
+   * sequence is not interleaved.
+   */
   static extraHeaders: Record<string, string> | null = null;
   static storage: HttpStorage | null = null;
 
@@ -197,7 +286,80 @@ export class Http {
     error: [] as HttpInterceptorError[],
   };
 
-  constructor(private readonly baseURL = DEFAULT_BASE_URL) {}
+  private readonly baseURL: string;
+  private readonly allowedOrigins: ReadonlySet<string>;
+
+  /**
+   * @param init - Either a base URL string (backwards-compatible form)
+   *   or an {@link HttpOptions} object. Using the object form lets
+   *   callers opt in to additional origins that absolute URLs and
+   *   redirect responses are permitted to reach. Any other origin is
+   *   rejected before the request is sent and, for redirects, before
+   *   the response body is returned.
+   *
+   * @example
+   * ```ts
+   * new Http("https://api.example.com");
+   * new Http({
+   *   baseURL: "https://api.example.com",
+   *   allowedOrigins: ["https://cdn.example.com"],
+   * });
+   * ```
+   */
+  constructor(init?: string | HttpOptions) {
+    const resolved: HttpOptions =
+      typeof init === "string" || init === undefined
+        ? { baseURL: init ?? DEFAULT_BASE_URL }
+        : { baseURL: init.baseURL ?? DEFAULT_BASE_URL, allowedOrigins: init.allowedOrigins };
+
+    this.baseURL = resolved.baseURL ?? DEFAULT_BASE_URL ?? "/";
+
+    const origins = new Set<string>();
+    for (const o of resolved.allowedOrigins ?? []) {
+      const origin = safeOrigin(o);
+      if (!origin) throw new Error(`Http: invalid allowedOrigins entry: ${o}`);
+      origins.add(origin);
+    }
+    const baseOrigin = safeOrigin(this.baseURL);
+    if (baseOrigin) origins.add(baseOrigin);
+    this.allowedOrigins = origins;
+  }
+
+  /** Whether `origin` is this instance's baseURL origin or an explicitly allowed one. */
+  private isAllowedOrigin(origin: string): boolean {
+    return this.allowedOrigins.size === 0 || this.allowedOrigins.has(origin);
+  }
+
+  /**
+   * If a request was sent with credentials (Authorization / Cookie) and
+   * ended up at a different origin via redirect, refuse to return the
+   * response. Defends against token exfil via server-controlled 3xx.
+   */
+  private assertSameOriginResponse(
+    requestURL: string,
+    response: Response,
+    sentHeaders: Record<string, string>,
+  ): void {
+    const hasAuthHeader = Object.keys(sentHeaders).some(
+      (k) => k.toLowerCase() === "authorization" && !!sentHeaders[k],
+    );
+    const hasCookieHeader = Object.keys(sentHeaders).some(
+      (k) => k.toLowerCase() === "cookie" && !!sentHeaders[k],
+    );
+    if (!hasAuthHeader && !hasCookieHeader) return;
+
+    const reqOrigin = safeOrigin(requestURL);
+    if (!reqOrigin) return; // relative URL — same-origin by definition
+
+    const resOrigin = response.url ? safeOrigin(response.url) : null;
+    if (!resOrigin || resOrigin === reqOrigin) return;
+
+    if (this.isAllowedOrigin(resOrigin)) return;
+
+    throw new Error(
+      `Http: credentialed request was redirected from ${reqOrigin} to untrusted origin ${resOrigin}`,
+    );
+  }
 
   /** Register a global interceptor (applies to all `Http` instances). */
   static on(...params: HttpInterceptorParameters) {
@@ -255,7 +417,9 @@ export class Http {
       return source.toString();
     }
 
-    return Serialize.queryString.stringify(source as Record<string, unknown>, {
+    const safe = stripUnsafeKeys(source as Record<string, unknown>);
+
+    return Serialize.queryString.stringify(safe, {
       skipNull: true,
       skipEmptyString: true,
     });
@@ -310,12 +474,12 @@ export class Http {
       value: "",
     };
 
-    if (token) {
-      result.value = token;
-
-      if (authHeaderType) {
-        result.value = `${authHeaderType} ${token}`;
-      }
+    // Header values must be visible ASCII (RFC 7230 §3.2.6) and must not
+    // contain CR/LF. A tampered token from storage (XSS-written) could
+    // otherwise smuggle headers or force the runtime to silently drop
+    // the Authorization header (fail-open).
+    if (token && /^[\x21-\x7E]+$/.test(token)) {
+      result.value = authHeaderType ? `${authHeaderType} ${token}` : token;
     }
 
     return result;
@@ -346,21 +510,49 @@ export class Http {
     return result;
   }
 
-  /** Build the full URL from base URL, path, query string, and path params. */
+  /**
+   * Build the full URL from base URL, path, query string, and path params.
+   *
+   * Security rules applied here (see SECURITY audit):
+   * - Absolute URLs must use `http`/`https` and their origin must match
+   *   `baseURL`'s origin or an entry in `allowedOrigins`.
+   * - Protocol-relative URLs (`//host/…`) are rejected — they silently
+   *   flip the target host.
+   * - Path params (`{id}`) are URL-encoded by `interpolateURL`
+   *   so a value of `"../admin"` cannot traverse the path.
+   * - Proto-pollution keys in `params` are stripped.
+   */
   getURL(options: HttpRequest): string {
-    const { url, params = {} } = options;
+    const { url = "", params = {} } = options;
     const queryString = this.getQuery(options);
 
-    let finalURL = url;
+    let finalURL: string;
 
-    if (url) {
-      if (url.match(/^https?:\/\//)) {
-        finalURL = url;
-      } else {
-        const baseURL = this.baseURL?.replace(/\/+$/, "");
-        const cleanURL = url.replace(/^\/+/, "");
-        finalURL = `${baseURL}/${cleanURL}`;
+    if (!url) {
+      finalURL = this.baseURL || "/";
+    } else if (url.startsWith("//")) {
+      throw new Error(`Http: protocol-relative URLs are not allowed: ${url}`);
+    } else if (/^[a-z][a-z0-9+.-]*:/i.test(url)) {
+      // Has a scheme — must be http/https and origin-allowed
+      let parsed: URL;
+      try {
+        parsed = new URL(url);
+      } catch {
+        throw new Error(`Http: invalid absolute URL: ${url}`);
       }
+      if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+        throw new Error(`Http: unsupported URL scheme: ${parsed.protocol}`);
+      }
+      if (!this.isAllowedOrigin(parsed.origin)) {
+        throw new Error(
+          `Http: URL origin '${parsed.origin}' is not in allowedOrigins`,
+        );
+      }
+      finalURL = parsed.toString();
+    } else {
+      const base = (this.baseURL || "/").replace(/\/+$/, "");
+      const cleanURL = url.replace(/^\/+/, "");
+      finalURL = base ? `${base}/${cleanURL}` : `/${cleanURL}`;
     }
 
     if (queryString) {
@@ -368,7 +560,18 @@ export class Http {
       finalURL += `${separator}${queryString}`;
     }
 
-    return Serialize.interpolate(finalURL, params);
+    if (!finalURL.includes("{") || !finalURL.includes("}")) return finalURL;
+
+    const safeParams = Array.isArray(params)
+      ? params
+      : stripUnsafeKeys(params as Record<string, unknown>);
+
+    return finalURL.replace(/\{([a-zA-Z0-9_.-]+)\}/g, (_m, variable) => {
+      const value = get(safeParams, variable);
+      if (value === null || value === undefined) return "";
+      if (typeof value === "object") return "";
+      return Serialize.URL.encode(String(value));
+    });
   }
 
   /** Serialize the request body (JSON, FormData, or binary). Returns `undefined` for bodyless methods. */
@@ -418,12 +621,24 @@ export class Http {
         delete requestHeaders["Content-Type"];
       }
 
+      const fetchConfigs: Record<string, unknown> = {};
+      if (modifiedOptions.configs) {
+        for (const key of Object.keys(modifiedOptions.configs)) {
+          if (ALLOWED_FETCH_KEYS.has(key)) {
+            fetchConfigs[key] = modifiedOptions.configs[key];
+          }
+        }
+      }
+
       const response = await fetch(fullURL, {
+        ...fetchConfigs,
         method: modifiedOptions.method || method,
         headers: requestHeaders,
         body: this.getBody(modifiedOptions) as BodyInit | undefined,
         signal: modifiedOptions.signal,
       });
+
+      this.assertSameOriginResponse(fullURL, response, requestHeaders);
 
       const headers = response.headers;
       const contentType = headers.get("Content-Type") || "";
