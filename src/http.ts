@@ -1,14 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { type FileListLike, flatten, isFileList, isLiteralObject, objectToFormData } from "./utilities";
+import { type FileListLike, isFileList } from "./utilities/filelist";
+import { flatten } from "./utilities/flatten";
+import { isFormData, objectToFormData } from "./utilities/formdata";
+import { sanitizeMime } from "./utilities/sanitize-mime";
 import { Serialize } from "./serialize";
+import { getEnv } from "./env";
 
-function getEnv(key: string, defaultValue?: string) {
-  if (typeof process !== "undefined" && isLiteralObject(process.env)) {
-    return process.env[key] ?? defaultValue;
-  }
-
-  return defaultValue;
-}
+// Allow XMLHttpRequest in environments that support it (browser, React Native)
+declare var XMLHttpRequest: any;
 
 /** Default base URL for HTTP requests, sourced from `API_URL` env variable. */
 export const DEFAULT_BASE_URL = getEnv("API_URL", "/");
@@ -28,6 +27,12 @@ export enum HttpMethod {
   PATCH = "PATCH",
   HEAD = "HEAD",
   OPTIONS = "OPTIONS",
+}
+
+/** Upload method types for {@link Http.createFactory}. */
+export enum HttpUpload {
+  UPLOAD = "UPLOAD",
+  RELATED = "RELATED",
 }
 
 /** Accepted query parameter formats for HTTP requests. */
@@ -106,6 +111,17 @@ export interface HttpUploadOptions extends Pick<
   body?: Record<string, unknown>;
 }
 
+/** Options for a multipart/related upload (e.g. Google Drive). */
+export interface HttpRelatedOptions
+  extends Pick<HttpRequest, "headers" | "params" | "signal" | "query"> {
+  /** JSON metadata object (will be serialized as the first part). */
+  metadata: Record<string, unknown>;
+  /** MIME type of the metadata part. Default: "application/json" */
+  metadataMimeType?: string;
+  /** MIME type of the file content. */
+  contentType: string;
+}
+
 /** Options for creating an HTTP factory via {@link Http.createFactory}. */
 export interface HttpFactoryOptions {
   baseURL?: string;
@@ -118,6 +134,22 @@ export interface HttpFactoryOptions {
 export interface HttpFactory<T = unknown, Args extends any[] = [], E = unknown> {
   key: string;
   fn: (...args: Args) => Promise<HttpResponse<T, E>>;
+}
+
+// ─── Endpoint Registry ──────────────────────────────────────────
+
+/** Central registry for grouping endpoint URLs by service name. */
+export class Endpoint {
+  private static registered: Record<string, Record<string, string>> = {};
+
+  static register(service: string, endpoints: Record<string, string>) {
+    this.registered[service] = { ...endpoints };
+    return this;
+  }
+
+  static all() {
+    return { ...this.registered };
+  }
 }
 
 /**
@@ -135,6 +167,7 @@ export interface HttpFactory<T = unknown, Args extends any[] = [], E = unknown> 
  */
 export class Http {
   static readonly method = HttpMethod;
+  static readonly Endpoint = Endpoint;
 
   static authTokenKey = "access_token";
   static authHeaderKey = "Authorization";
@@ -226,11 +259,6 @@ export class Http {
       skipNull: true,
       skipEmptyString: true,
     });
-  }
-
-  /** Type guard that checks whether a body is a `FormData` instance. */
-  isFormData(body: unknown): body is FormData {
-    return body instanceof FormData;
   }
 
   /** Merge additional default headers into this instance. */
@@ -343,8 +371,8 @@ export class Http {
     return Serialize.interpolate(finalURL, params);
   }
 
-  /** Serialize the request body (JSON or FormData). Returns `undefined` for bodyless methods. */
-  getBody(options: HttpRequest) {
+  /** Serialize the request body (JSON, FormData, or binary). Returns `undefined` for bodyless methods. */
+  getBody(options: HttpRequest): string | FormData | Uint8Array | ArrayBuffer | undefined {
     const { method, body } = options;
 
     if (
@@ -358,8 +386,13 @@ export class Http {
 
     if (
       (method === HttpMethod.POST || method === HttpMethod.PUT || method === HttpMethod.PATCH) &&
-      this.isFormData(body)
+      isFormData(body)
     ) {
+      return body;
+    }
+
+    // Allow raw binary payloads (e.g. multipart/related body)
+    if (body instanceof Uint8Array || body instanceof ArrayBuffer) {
       return body;
     }
 
@@ -381,14 +414,14 @@ export class Http {
       const fullURL = this.getURL(modifiedOptions);
       const requestHeaders = this.getHeaders(modifiedOptions.headers || {});
 
-      if (this.isFormData(modifiedOptions.body) && "Content-Type" in requestHeaders) {
+      if (isFormData(modifiedOptions.body) && "Content-Type" in requestHeaders) {
         delete requestHeaders["Content-Type"];
       }
 
       const response = await fetch(fullURL, {
         method: modifiedOptions.method || method,
         headers: requestHeaders,
-        body: this.getBody(modifiedOptions),
+        body: this.getBody(modifiedOptions) as BodyInit | undefined,
         signal: modifiedOptions.signal,
       });
 
@@ -620,7 +653,7 @@ export class Http {
 
           const xhr = new XMLHttpRequest();
 
-          xhr.upload.addEventListener("progress", (event) => {
+          xhr.upload.addEventListener("progress", (event: { lengthComputable: boolean; loaded: number; total: number }) => {
             if (event.lengthComputable) {
               const percentage = Math.round((event.loaded / event.total) * 100);
 
@@ -704,7 +737,7 @@ export class Http {
             }
           });
 
-          xhr.addEventListener("error", (error) => {
+          xhr.addEventListener("error", (error: unknown) => {
             const allInterceptors = [...Http.interceptors.error, ...this.interceptors.error];
             for (const errorHandler of allInterceptors) {
               errorHandler(error);
@@ -738,7 +771,7 @@ export class Http {
             }
           });
 
-          xhr.send(requestOptions.body as Document | XMLHttpRequestBodyInit | null);
+          xhr.send(requestOptions.body as BodyInit | null);
         } catch (error) {
           const allInterceptors = [...Http.interceptors.error, ...this.interceptors.error];
           for (const errorHandler of allInterceptors) {
@@ -764,6 +797,70 @@ export class Http {
       params: options?.params,
       signal: options?.signal,
       query: options?.query,
+    });
+  }
+
+  /**
+   * Upload with multipart/related format.
+   * Builds a proper multipart/related body with JSON metadata + binary file content.
+   *
+   * @example
+   * ```ts
+   * const result = await http.related<DriveFile>("/files?uploadType=multipart", fileBuffer, {
+   *   metadata: { name: "photo.jpg", parents: ["folderId"] },
+   *   contentType: "image/jpeg",
+   * });
+   * ```
+   */
+  related<T = unknown, E = unknown>(
+    url: string,
+    fileData: ArrayBuffer | Uint8Array,
+    options: HttpRelatedOptions,
+  ): Promise<HttpResponse<T, E>> {
+    const contentType = sanitizeMime(options.contentType);
+    const metadataMimeType = sanitizeMime(options.metadataMimeType || "application/json");
+
+    const boundary = `----related-boundary-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const metadataJson = JSON.stringify(options.metadata);
+
+    const encoder = new TextEncoder();
+
+    const metadataPart = encoder.encode(
+      `--${boundary}\r\n` +
+        `Content-Type: ${metadataMimeType}; charset=UTF-8\r\n\r\n` +
+        metadataJson +
+        "\r\n",
+    );
+
+    const filePart = encoder.encode(
+      `--${boundary}\r\n` +
+        `Content-Type: ${contentType}\r\n` +
+        "Content-Transfer-Encoding: binary\r\n\r\n",
+    );
+
+    const closing = encoder.encode(`\r\n--${boundary}--`);
+
+    const fileBytes = fileData instanceof Uint8Array ? fileData : new Uint8Array(fileData);
+
+    const body = new Uint8Array(
+      metadataPart.length + filePart.length + fileBytes.length + closing.length,
+    );
+    [metadataPart, filePart, fileBytes, closing].reduce((offset, part) => {
+      body.set(part, offset);
+      return offset + part.length;
+    }, 0);
+
+    return this.request<T, E>({
+      method: HttpMethod.POST,
+      url,
+      body: body as unknown,
+      headers: {
+        ...(options.headers || {}),
+        "Content-Type": `multipart/related; boundary=${boundary}`,
+      } as Record<string, string>,
+      params: options.params,
+      signal: options.signal,
+      query: options.query,
     });
   }
 
@@ -795,7 +892,7 @@ export class Http {
 
     return function factory<T, Args extends any[] = [], E = unknown>(
       key: string,
-      method?: HttpMethod | "UPLOAD",
+      method?: HttpMethod | HttpUpload,
     ): HttpFactory<T, Args, E> {
       const urls = flatten(getEndpoints()) as Record<string, string>;
       const url = urls[key] as string;
@@ -821,13 +918,18 @@ export class Http {
               return await instance.head<T, E>(url, ...args);
             case HttpMethod.OPTIONS:
               return await instance.options<T, E>(url, ...args);
-            case "UPLOAD":
+            case HttpUpload.UPLOAD:
               return await instance.upload<T, E>(
                 url,
                 ...(args as unknown as [
                   File | File[] | FileListLike,
                   HttpUploadOptions | undefined,
                 ]),
+              );
+            case HttpUpload.RELATED:
+              return await instance.related<T, E>(
+                url,
+                ...(args as unknown as [ArrayBuffer | Uint8Array, HttpRelatedOptions]),
               );
             default:
               return await instance.get<T, Args[0], E>(url, ...args);
