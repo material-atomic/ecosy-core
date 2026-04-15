@@ -14,13 +14,14 @@ yarn add @ecosy/core
 
 | Entry point              | Description                                   |
 | ------------------------ | --------------------------------------------- |
-| `@ecosy/core`            | Re-exports all modules                        |
+| `@ecosy/core`            | Re-exports all modules (except `syhemo`)      |
 | `@ecosy/core/types`      | TypeScript type utilities                     |
 | `@ecosy/core/utilities`  | Runtime utility functions                     |
+| `@ecosy/core/env`        | `getEnv()` — safe `process.env` access        |
 | `@ecosy/core/subscriber` | Pub/sub event emitter with state              |
-| `@ecosy/core/http`       | HTTP client with interceptors and upload      |
+| `@ecosy/core/http`       | HTTP client, Endpoint registry, uploads       |
 | `@ecosy/core/logger`     | Structured logger with log levels             |
-| `@ecosy/core/syhemo`     | System health monitor                         |
+| `@ecosy/core/syhemo`     | System health monitor (Node-only)             |
 | `@ecosy/core/serialize`  | Serialization engine (JSON, URL, queryString) |
 | `@ecosy/core/slugify`    | Unicode-safe string slugifier                 |
 | `@ecosy/core/searchify`  | Diacritic-insensitive fuzzy search            |
@@ -38,6 +39,9 @@ Deep utility types for TypeScript — `Freezable<T>`, `PartialLiteral<T>`, `Prom
 - **`flatten`** / **`flattenToArray`** — Object flattening
 - **`get`** — Safe deep path resolution (`"a.b[0].c"`)
 - **`defer`** / **`deferAsync`** — rAF + setTimeout scheduling with cancel
+- **`sanitizeMime`** / **`MIME_REGEX`** — validate and normalize MIME strings
+- **`isFormData`** / **`objectToFormData`** — FormData detection and conversion
+- **`toString`** / **`ucfirst`** / **`pascalToKebab`** — string helpers
 - Type guards: `isFunction`, `isObject`, `isLiteralObject`, `isComplexObject`, `isObjectable`, `hasOwnProperty`
 
 ### Subscriber
@@ -46,7 +50,13 @@ Pub/sub event emitter with built-in state management, async once, and typed wiri
 
 ### Http
 
-Configurable HTTP client with request/response interceptors, auth token injection, URL interpolation via Serialize, and XHR-based upload with progress tracking.
+Configurable HTTP client with request/response interceptors, auth token injection, URL interpolation via Serialize, XHR-based upload with progress tracking, and `multipart/related` upload for Google-style APIs.
+
+- **`Endpoint`** — Central registry for grouping service endpoints (`Endpoint.register("drive", { … })`), also exposed as `Http.Endpoint`
+- **`HttpMethod`** / **`HttpUpload`** — Enums covering HTTP verbs and upload modes (`UPLOAD`, `RELATED`)
+- **`http.upload(url, files, options)`** — XHR upload with progress events
+- **`http.related(url, bytes, { metadata, contentType })`** — `multipart/related` upload with JSON metadata + binary body
+- **`Http.createFactory({ http, endpoint })`** — Typed endpoint factory keyed by registered service names
 
 ### Serialize
 
@@ -72,8 +82,9 @@ Full API reference and guides: **[docs.ecosy.io](https://docs.ecosy.io)**
 | -------------------------------------------------------------------- | --------------------------------------------------------------- |
 | [`@ecosy/datekit`](https://github.com/material-atomic/ecosy-datekit) | Headless date utilities (Dateify, Dayify, Monthify, Yearify)    |
 | [`@ecosy/mailer`](https://github.com/material-atomic/ecosy-mailer)   | Email engine with template formatting, retry, and rate limiting |
-| [`@ecosy/store`](https://github.com/material-atomic/ecosy-store)     | State management with slices and reducers                       |
+| [`@ecosy/store`](https://github.com/material-atomic/ecosy-store)     | State management with slices, reducers, and `configureStore`    |
 | [`@ecosy/react`](https://github.com/material-atomic/ecosy-react)     | React hooks for `@ecosy/store`                                  |
+| [`@ecosy/googleapis`](https://github.com/material-atomic/ecosy-googleapis) | Google Drive / OAuth2 client built on `@ecosy/core/http`  |
 
 ## License
 

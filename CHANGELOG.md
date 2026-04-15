@@ -1,5 +1,33 @@
 # Changelog
 
+## 0.3.0 (2026-04-15)
+
+### Features
+
+- **Http**: New `Endpoint` registry for grouping service endpoints by name (`Endpoint.register(service, endpoints)` / `Endpoint.all()`), also exposed as `Http.Endpoint`
+- **Http**: New `HttpUpload` enum (`UPLOAD`, `RELATED`) replacing the `"UPLOAD"` string literal in `Http.createFactory`
+- **Http**: New `related()` method for `multipart/related` uploads (JSON metadata + binary body), ready for Google Drive-style APIs
+- **Http**: `getBody()` now accepts `Uint8Array` / `ArrayBuffer` payloads for binary requests
+- **Env**: New `./env` subpath exporting the `getEnv()` helper (previously inlined in `http.ts`)
+- **Utilities**: New `sanitizeMime()` and `MIME_REGEX` for validating MIME strings
+- **Utilities**: New `isFormData()` standalone type guard
+- **Utilities**: Consolidated `toString`, `ucfirst`, `pascalToKebab` into a single `./string` module
+- **Utilities**: Consolidated `objectToFormData` (and new `isFormData`) into `./formdata`
+
+### Improvements
+
+- Internal modules now use direct relative imports (e.g. `./utilities/get`) instead of barrel re-exports, improving tree-shaking
+- `XMLHttpRequest` is declared globally inside `http.ts` so the upload path compiles on non-DOM runtimes (React Native, Workers)
+
+### Breaking Changes
+
+- **Http**: Removed `Http.prototype.isFormData` — use the new standalone `isFormData` from `@ecosy/core/utilities`
+- **Http**: `createFactory` typing now uses `HttpMethod | HttpUpload` instead of `HttpMethod | "UPLOAD"`. Passing the raw string `"UPLOAD"` still works at runtime (enum value is `"UPLOAD"`) but callers on strict TS should use `HttpUpload.UPLOAD`
+- **Barrel**: `syhemo` is no longer re-exported from the root `@ecosy/core` entry; import from the `@ecosy/core/syhemo` subpath instead
+- **Utilities files**: `to-string.ts`, `ucfirst.ts`, `pascal-to-kebab.ts`, `object-to-formdata.ts` removed as standalone files. Public exports are unchanged when importing from `@ecosy/core/utilities`
+
+---
+
 ## 0.2.1 (2026-04-06)
 
 ### Bug Fixes
