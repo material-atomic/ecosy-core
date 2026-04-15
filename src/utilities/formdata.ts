@@ -1,5 +1,10 @@
 import { isFileList } from "./filelist";
 
+/** Type guard that checks whether a value is a `FormData` instance. */
+export function isFormData(body: unknown): body is FormData {
+  return body instanceof FormData;
+}
+
 /**
  * Recursively converts a value into a `FormData` instance.
  * Handles Date, File, Blob, FileList, arrays, nested objects, and primitives.

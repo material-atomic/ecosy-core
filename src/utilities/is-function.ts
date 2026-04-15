@@ -1,5 +1,5 @@
 import type { LiteralFunction } from "@ecosy/core/types";
-import { toString } from "./to-string";
+import { toString } from "./string";
 
 /**
  * Checks whether a value is a function (including async and generator functions).

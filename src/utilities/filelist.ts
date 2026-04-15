@@ -1,5 +1,5 @@
 import { isFunction } from "./is-function";
-import { toString } from "./to-string";
+import { toString } from "./string";
 
 /**
  * A platform-agnostic interface representing a `FileList`-like object.
