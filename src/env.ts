@@ -20,12 +20,12 @@ function defaultGetter(): EnvSource {
   }
 
   try {
-    const metaEnv = (import.meta as unknown as Record<string, unknown>).env;
-    if (metaEnv && isLiteralObject(metaEnv)) {
-      return metaEnv as EnvSource;
+    const meta = new Function("return import.meta")() as Record<string, unknown>;
+    if (meta?.env && isLiteralObject(meta.env)) {
+      return meta.env as EnvSource;
     }
   } catch {
-    // import.meta may not be available in all environments
+    // import.meta may not be available in all environments (e.g. Hermes)
   }
 
   return {};
