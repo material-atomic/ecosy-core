@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import { type FileListLike, isFileList } from "./utilities/filelist";
-import { flatten } from "./utilities/flatten";
-import { isFormData, objectToFormData } from "./utilities/formdata";
 import { get } from "./utilities/get";
-import { sanitizeMime } from "./utilities/sanitize-mime";
-import { Serialize } from "./serialize";
 import { getEnv } from "./env";
+import { flatten } from "./utilities/flatten";
+import { Serialize } from "./serialize";
+import { sanitizeMime } from "./utilities/sanitize-mime";
+import { isFormData, objectToFormData } from "./utilities/formdata";
+import { type FileListLike, isFileList } from "./utilities/filelist";
+import type { Promisable } from "./types/built-in";
 
 // Allow XMLHttpRequest in environments that support it (browser, React Native)
 declare var XMLHttpRequest: any;
@@ -156,9 +157,9 @@ export interface HttpOptions {
 
 /** Storage adapter interface for reading/writing auth tokens (e.g. `localStorage`). */
 export interface HttpStorage {
-  getItem(key: string): string | null;
-  setItem(key: string, value: string): void;
-  removeItem(key: string, options?: any): void;
+  getItem(key: string): Promisable<string | null>;
+  setItem(key: string, value: string): Promisable<void>;
+  removeItem(key: string, options?: any): Promisable<void>;
 }
 
 /** Interceptor that can modify a request before it is sent. */
@@ -472,7 +473,7 @@ export class Http {
   }
 
   /** Read the auth token from storage and format it with the configured header type. */
-  getToken() {
+  async getToken() {
     const authTokenKey = API_AUTH_TOKEN_KEY || Http.authTokenKey;
     const authHeaderKey = API_AUTH_HEADER_KEY || Http.authHeaderKey;
     const authHeaderType = API_AUTH_HEADER_TYPE || Http.authHeaderType;
@@ -487,7 +488,7 @@ export class Http {
     let token = "";
 
     if (this.storage) {
-      token = this.storage.getItem(authTokenKey) || "";
+      token = await this.storage.getItem(authTokenKey) || "";
     }
 
     const result = {
@@ -507,8 +508,8 @@ export class Http {
   }
 
   /** Build the final headers object, injecting auth token and Content-Type. */
-  getHeaders(headers: Record<string, string> = {}, isFormData?: boolean) {
-    const token = this.getToken();
+  async getHeaders(headers: Record<string, string> = {}, isFormData?: boolean) {
+    const token = await this.getToken();
 
     if (!(token.key in headers) || !headers[token.key]) {
       headers[token.key] = token.value;
@@ -636,7 +637,7 @@ export class Http {
       }
 
       const fullURL = this.getURL(modifiedOptions);
-      const requestHeaders = this.getHeaders(modifiedOptions.headers || {});
+      const requestHeaders = await this.getHeaders(modifiedOptions.headers || {});
 
       if (isFormData(modifiedOptions.body) && "Content-Type" in requestHeaders) {
         delete requestHeaders["Content-Type"];
@@ -881,7 +882,7 @@ export class Http {
           }
 
           const fullURL = this.getURL(requestOptions);
-          const requestHeaders = this.getHeaders(requestOptions.headers || {}, true);
+          const requestHeaders = await this.getHeaders(requestOptions.headers || {}, true);
 
           const xhr = new XMLHttpRequest();
 
