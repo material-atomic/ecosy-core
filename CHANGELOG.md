@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.4 (2026-04-16)
+
+### Bug Fixes
+
+- **Env**: replaced direct `import.meta` access with `new Function("return import.meta")()` in the default env getter. `import.meta` is a compile-time syntax that causes a parse error on runtimes without ESM support (e.g. Hermes in React Native). The `new Function` wrapper defers evaluation to runtime and is safely caught by the existing try/catch.
+
+---
+
 ## 0.3.3 (2026-04-16)
 
 ### Features
