@@ -4,7 +4,7 @@ import { isEqual } from "./utilities/is-equal";
 import { isLiteralObject } from "./utilities/object";
 import { merge } from "./utilities/merge";
 import { ucfirst } from "./utilities/string";
-import type { Freezable, LiteralObject, PartialLiteral, ToString } from "./types";
+import type { Freezable, LiteralObject, PartialLiteral, ToString } from "./types/built-in";
 
 export type SubscribeChannel = string;
 export type SubcribeHandler<Payload = never> = [Payload] extends [never]

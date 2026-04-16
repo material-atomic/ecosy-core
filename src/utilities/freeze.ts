@@ -1,4 +1,4 @@
-import type { Freezable, LiteralObject } from "../types";
+import type { Freezable, LiteralObject } from "../types/built-in";
 import { clone } from "./clone";
 import { isObject } from "./object";
 

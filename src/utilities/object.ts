@@ -1,4 +1,4 @@
-import type { LiteralObject, Objectable } from "@ecosy/core/types";
+import type { LiteralObject, Objectable } from "../types/built-in";
 import { isFunction } from "./is-function";
 
 /**

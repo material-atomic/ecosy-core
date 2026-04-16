@@ -1,4 +1,4 @@
-import type { LiteralFunction } from "@ecosy/core/types";
+import type { LiteralFunction } from "../types/built-in";
 import { toString } from "./string";
 
 /**

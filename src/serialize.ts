@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
-import type { Freezable, LiteralObject } from "./types";
+import type { Freezable, LiteralObject } from "./types/built-in";
 import { freeze } from "./utilities/freeze";
 import { get } from "./utilities/get";
 import { hasOwnProperty, isLiteralObject, isObjectable } from "./utilities/object";
