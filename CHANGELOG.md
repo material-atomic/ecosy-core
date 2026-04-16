@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.3.3 (2026-04-16)
+
+### Features
+
+- **HttpStorage**: `getItem`, `setItem`, `removeItem` now accept both sync and async return values (`Promisable<T>`). This allows using async storage backends (e.g. `AsyncStorage` in React Native, `expo-secure-store`, database-backed stores) without needing a synchronous wrapper.
+- **Http.getToken / Http.getHeaders**: both are now `async` and `await` the storage calls, making the auth token flow compatible with async storage adapters.
+
+### Improvements
+
+- **Imports**: type imports now point directly at `./types/built-in` instead of the barrel `./types`, improving tree-shaking and avoiding circular dependency risks.
+- **Imports**: replaced subpath alias `@ecosy/core/types` with relative `../types/built-in` in internal utility files (`is-function.ts`, `object.ts`), keeping resolution self-contained within the package.
+- **Imports**: reordered `http.ts` imports for consistency.
+
+---
+
 ## 0.3.2 (2026-04-16)
 
 ### Features
