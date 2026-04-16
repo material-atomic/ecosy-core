@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.2 (2026-04-16)
+
+### Features
+
+- **HttpOptions.configs**: constructor-level pass-through bag merged into every request sent through this instance. Same shape and allowlist as per-call `HttpRequest.configs` (`credentials`, `cache`, `mode`, `redirect`, `referrer`, `referrerPolicy`, `integrity`, `keepalive`, `priority`, `duplex`, plus framework extensions `next`, `cf`, `dispatcher`). Per-call `configs` override instance defaults. Avoids needing an `on("request", …)` interceptor just to set things like `credentials: "include"` on every call.
+
+### Improvements
+
+- Extracted `filterFetchConfigs` helper so the allowlist filter is applied in a single place (both constructor defaults and per-call `configs`), replacing the inline `for … of Object.keys` loop in `request()`.
+
+---
+
 ## 0.3.1 (2026-04-15)
 
 ### Features

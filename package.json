@@ -1,6 +1,6 @@
 {
   "name": "@ecosy/core",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "A modular, tree-shakable collection of essential utilities, serialization primitives, and event-driven patterns for modern TypeScript applications",
   "license": "MIT",
   "publishConfig": {
