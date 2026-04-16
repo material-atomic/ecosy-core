@@ -50,6 +50,15 @@ const ALLOWED_FETCH_KEYS: ReadonlySet<string> = new Set([
   "dispatcher",
 ]);
 
+/** Keep only keys permitted on a fetch pass-through bag; drops the rest silently. */
+function filterFetchConfigs(source: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = Object.create(null);
+  for (const key of Object.keys(source)) {
+    if (ALLOWED_FETCH_KEYS.has(key)) out[key] = source[key];
+  }
+  return out;
+}
+
 /** Strip prototype-pollution vectors from a plain object shallowly. */
 function stripUnsafeKeys<T extends Record<string, unknown>>(source: T): T {
   const out: Record<string, unknown> = Object.create(null);
@@ -134,6 +143,15 @@ export interface HttpOptions {
    * response body is returned.
    */
   allowedOrigins?: ReadonlyArray<string>;
+  /**
+   * Default `configs` merged into every request sent through this
+   * instance. Same shape and allowlist as {@link HttpRequest.configs}:
+   * `credentials`, `cache`, `mode`, `redirect`, `referrer`,
+   * `referrerPolicy`, `integrity`, `keepalive`, `priority`, `duplex`,
+   * plus framework extensions (`next`, `cf`, `dispatcher`). Per-call
+   * `configs` override these.
+   */
+  configs?: Record<string, unknown>;
 }
 
 /** Storage adapter interface for reading/writing auth tokens (e.g. `localStorage`). */
@@ -288,6 +306,7 @@ export class Http {
 
   private readonly baseURL: string;
   private readonly allowedOrigins: ReadonlySet<string>;
+  private readonly defaultConfigs: Record<string, unknown>;
 
   /**
    * @param init - Either a base URL string (backwards-compatible form)
@@ -310,7 +329,7 @@ export class Http {
     const resolved: HttpOptions =
       typeof init === "string" || init === undefined
         ? { baseURL: init ?? DEFAULT_BASE_URL }
-        : { baseURL: init.baseURL ?? DEFAULT_BASE_URL, allowedOrigins: init.allowedOrigins };
+        : init;
 
     this.baseURL = resolved.baseURL ?? DEFAULT_BASE_URL ?? "/";
 
@@ -323,6 +342,8 @@ export class Http {
     const baseOrigin = safeOrigin(this.baseURL);
     if (baseOrigin) origins.add(baseOrigin);
     this.allowedOrigins = origins;
+
+    this.defaultConfigs = resolved.configs ? filterFetchConfigs(resolved.configs) : {};
   }
 
   /** Whether `origin` is this instance's baseURL origin or an explicitly allowed one. */
@@ -621,14 +642,10 @@ export class Http {
         delete requestHeaders["Content-Type"];
       }
 
-      const fetchConfigs: Record<string, unknown> = {};
-      if (modifiedOptions.configs) {
-        for (const key of Object.keys(modifiedOptions.configs)) {
-          if (ALLOWED_FETCH_KEYS.has(key)) {
-            fetchConfigs[key] = modifiedOptions.configs[key];
-          }
-        }
-      }
+      const fetchConfigs = {
+        ...this.defaultConfigs,
+        ...(modifiedOptions.configs ? filterFetchConfigs(modifiedOptions.configs) : {}),
+      };
 
       const response = await fetch(fullURL, {
         ...fetchConfigs,
