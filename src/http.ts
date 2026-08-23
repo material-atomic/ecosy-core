@@ -597,22 +597,25 @@ export class Http {
   }
 
   /** Serialize the request body (JSON, FormData, or binary). Returns `undefined` for bodyless methods. */
-  getBody(options: HttpRequest): string | FormData | Uint8Array | ArrayBuffer | undefined {
+  getBody(options: HttpRequest): string | FormData | Uint8Array | ArrayBuffer | URLSearchParams | undefined {
     const { method, body } = options;
 
     if (
       method === HttpMethod.GET ||
       method === HttpMethod.HEAD ||
-      method === HttpMethod.OPTIONS ||
-      method === HttpMethod.DELETE
+      method === HttpMethod.OPTIONS
     ) {
       return undefined;
     }
 
     if (
-      (method === HttpMethod.POST || method === HttpMethod.PUT || method === HttpMethod.PATCH) &&
+      (method === HttpMethod.POST || method === HttpMethod.PUT || method === HttpMethod.PATCH || method === HttpMethod.DELETE) &&
       isFormData(body)
     ) {
+      return body;
+    }
+
+    if (body instanceof URLSearchParams) {
       return body;
     }
 
@@ -790,14 +793,16 @@ export class Http {
   }
 
   /** Perform a DELETE request. */
-  delete<T = unknown, E = unknown>(
+  delete<T = unknown, Body = unknown, E = unknown>(
     url: string,
+    body?: Body,
     options?: Pick<HttpRequest, "headers" | "params" | "signal" | "query">,
   ): Promise<HttpResponse<T, E>> {
     return this.request<T, E>({
       ...options,
       method: HttpMethod.DELETE,
       url,
+      body,
     });
   }
 
@@ -1146,7 +1151,7 @@ export class Http {
             case HttpMethod.PATCH:
               return await instance.patch<T, Args[0], E>(url, ...args);
             case HttpMethod.DELETE:
-              return await instance.delete<T, E>(url, ...args);
+              return await instance.delete<T, Args[0], E>(url, ...args);
             case HttpMethod.HEAD:
               return await instance.head<T, E>(url, ...args);
             case HttpMethod.OPTIONS:
