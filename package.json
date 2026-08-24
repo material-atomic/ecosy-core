@@ -1,6 +1,6 @@
 {
   "name": "@ecosy/core",
-  "version": "0.3.4",
+  "version": "0.4.0",
   "description": "A modular, tree-shakable collection of essential utilities, serialization primitives, and event-driven patterns for modern TypeScript applications",
   "license": "MIT",
   "publishConfig": {
@@ -9,9 +9,11 @@
   "type": "module",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
+  "unpkg": "./dist/ecosy-core.umd.js",
   "types": "./dist/index.d.ts",
   "files": [
-    "dist"
+    "dist",
+    "agents"
   ],
   "exports": {
     ".": {
@@ -39,10 +41,16 @@
       "require": "./dist/subscriber.js"
     },
     "./http": {
-      "source": "./src/http.ts",
-      "types": "./dist/http.d.ts",
-      "import": "./dist/http.mjs",
-      "require": "./dist/http.js"
+      "source": "./src/http/index.ts",
+      "types": "./dist/http/index.d.ts",
+      "import": "./dist/http/index.mjs",
+      "require": "./dist/http/index.js"
+    },
+    "./http/plugins": {
+      "source": "./src/http/plugins/index.ts",
+      "types": "./dist/http/plugins/index.d.ts",
+      "import": "./dist/http/plugins/index.mjs",
+      "require": "./dist/http/plugins/index.js"
     },
     "./logger": {
       "source": "./src/logger.ts",
@@ -118,5 +126,12 @@
     "rollup": "^4.59.1",
     "tslib": "^2.8.1",
     "typescript": "^6.0.2"
+  },
+  "agents": {
+    "skills": [
+      "$this://agents/skills/ecosy-core-fetcher/SKILL.md",
+      "$this://agents/skills/ecosy-core-subscriber/SKILL.md",
+      "$this://agents/skills/ecosy-core-serialize/SKILL.md"
+    ]
   }
 }

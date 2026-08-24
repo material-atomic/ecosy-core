@@ -81,4 +81,24 @@ const esmConfig = {
   ],
 };
 
-export default [cjsConfig, esmConfig];
+// UMD build (Standalone for browsers)
+const umdConfig = {
+  input: "src/index.ts",
+  output: {
+    file: "dist/ecosy-core.umd.js",
+    format: "umd",
+    name: "EcosyCore",
+    sourcemap: true,
+    exports: "named",
+  },
+  plugins: [
+    typescript({
+      tsconfig: "./tsconfig.json",
+      declaration: false,
+      rootDir: "src",
+    }),
+    terser(minifyOptions),
+  ],
+};
+
+export default [cjsConfig, esmConfig, umdConfig];

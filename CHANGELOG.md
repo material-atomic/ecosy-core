@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.4.0 (2026-08-24)
+
+### Features
+
+- **Fetcher**: Introduced a new **Mutable Chaining Builder** pattern for HTTP requests. The new `Fetcher` unifies client creation and pipeline execution, allowing deep configuration via `.use()`, `.request()`, `.transform()`, `.retry()`, and `.onResult()`.
+- **Fetcher Plugins**: Added a plugin ecosystem based on Koa-style `FetcherMiddleware` for limitless extensibility.
+- **Plugin `dedupe`**: A built-in plugin that prevents the "Thundering Herd" problem by deduplicating identical concurrent requests and sharing the same Promise.
+- **Plugin `logger`**: A built-in plugin that logs request/response lifecycles and measures execution time.
+- **Plugin `cache`**: A built-in plugin providing lightweight in-memory caching with TTL support.
+- **Exports**: Added `./http/fetcher` and `./http/plugins` to the root exports.
+
+### Improvements
+
+- **Http Architecture**: Extracted the core client creation logic into `client.ts` (`createClient`). `Http` instances are now tightly scoped to their respective `Fetcher` builders rather than relying on static mutable state.
+- **Late-Binding Auth**: The new `Fetcher.retry` hook supports returning a Promise, enabling seamless, domain-agnostic refresh token debouncing (e.g. dropping in `refreshing` lock logic without modifying the core).
+
+### Bug Fixes
+
+- **Http**: Fixed an issue where `URLSearchParams` was not properly supported/parsed when passed as query parameters.
+- **Http**: Updated `DELETE` requests to allow sending a `body` payload, accommodating APIs that require a request body for deletion.
+
+### Breaking Changes
+
+- **HttpStorage**: Removed `HttpStorage` entirely. Storage and token injection logic should now be handled directly via `Fetcher` interceptors (`.request()`) and lifecycle hooks (`.retry()`).
+
 ## 0.3.4 (2026-04-16)
 
 ### Bug Fixes

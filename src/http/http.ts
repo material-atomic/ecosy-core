@@ -11,31 +11,12 @@ import type {
   HttpInterceptorRequest, 
   HttpInterceptorResponse, 
   HttpInterceptorTransform, 
-  HttpInterceptorError 
+  HttpInterceptorError,
+  HttpInterceptorParameters,
 } from "./init";
 import type { FileListLike } from "../utilities/filelist";
-import { getEnv } from "../env";
 
-export const DEFAULT_BASE_URL = getEnv("API_URL", "/");
-
-import { flatten } from "../utilities/flatten";
-
-export interface HttpClientOptions {
-  baseURL?: string;
-  http?: Http;
-  endpoint?: Record<string, unknown> | (() => Record<string, unknown>);
-}
-
-export interface HttpAction<T = unknown, Args extends any[] = [], E = unknown> {
-  key: string;
-  fn: (...args: Args) => Promise<HttpResponse<T, E>>;
-}
-
-export type HttpInterceptorParameters =
-  | ["request", HttpInterceptorRequest]
-  | ["response", HttpInterceptorResponse]
-  | ["transform", HttpInterceptorTransform]
-  | ["error", HttpInterceptorError];
+const DEFAULT_BASE_URL = "/";
 
 export interface HttpOptions {
   baseURL?: string;
@@ -227,72 +208,5 @@ export class Http extends HttpStatic {
     options: HttpRelatedOptions & Omit<HttpInit, "url" | "method" | "body">,
   ) {
     return HttpXML.related<DataType, Err>(url, fileData, this.mergeConfig({ ...options, url, method: Methods.POST }) as any);
-  }
-
-  /**
-   * Creates a client that generates typed endpoint actions.
-   * Each action has a `key` (useful for caching keys like React Query) and an async `fn`.
-   *
-   * @example
-   * ```ts
-   * const api = Http.createClient({
-   *   baseURL: "https://api.example.com",
-   *   endpoint: { users: { list: "/users", create: "/users" } },
-   * });
-   *
-   * const getUsers = api<User[]>("users.list");
-   * const { data } = await getUsers.fn();
-   * ```
-   */
-  static createClient(options: HttpClientOptions = {}) {
-    const instance = options.http || new Http(options.baseURL);
-
-    const getEndpoints = () => {
-      if (typeof options.endpoint === "function") {
-        return options.endpoint();
-      } else {
-        return options.endpoint || {};
-      }
-    };
-
-    return function client<T, Args extends any[] = [], E = unknown>(
-      key: string,
-      method?: HttpMethod | "upload" | "related",
-    ): HttpAction<T, Args, E> {
-      const urls = flatten(getEndpoints()) as Record<string, string>;
-      const url = urls[key] as string;
-
-      return {
-        key,
-        fn: async (...args: Args) => {
-          switch (method) {
-            case Methods.POST:
-              return await instance.post<T, E>(url, ...(args as unknown as [any, any]));
-            case Methods.PUT:
-              return await instance.put<T, E>(url, ...(args as unknown as [any, any]));
-            case Methods.PATCH:
-              return await instance.patch<T, E>(url, ...(args as unknown as [any, any]));
-            case Methods.DELETE:
-              return await instance.delete<T, E>(url, ...(args as unknown as [any, any]));
-            case Methods.HEAD:
-              return await instance.head<T, E>(url, ...(args as unknown as [any]));
-            case Methods.OPTIONS:
-              return await instance.options<T, E>(url, ...(args as unknown as [any]));
-            case "upload":
-              return await instance.upload<T, E>(
-                url,
-                ...(args as unknown as [File | File[] | FileListLike, (HttpUploadOptions & Omit<HttpInit, "url" | "method" | "body">)?])
-              );
-            case "related":
-              return await instance.related<T, E>(
-                url,
-                ...(args as unknown as [ArrayBuffer | Uint8Array, HttpRelatedOptions & Omit<HttpInit, "url" | "method" | "body">])
-              );
-            default:
-              return await instance.get<T, E>(url, ...(args as unknown as [any]));
-          }
-        },
-      };
-    };
   }
 }
