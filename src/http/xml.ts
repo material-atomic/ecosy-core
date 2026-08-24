@@ -10,7 +10,6 @@ import { HttpUtils } from "./utils";
 import type { HttpInit } from "./init";
 import type { HttpResponse } from "./response";
 import type { HttpRequest } from "./request";
-import { HttpStatic } from "./http-static";
 
 declare var XMLHttpRequest: any;
 
@@ -36,7 +35,9 @@ export interface HttpRelatedOptions
   contentType: string;
 }
 
-export abstract class HttpXML {
+import { HttpCore } from "./http-core";
+
+export abstract class HttpXML extends HttpCore {
   static upload<DataType = unknown, Err = unknown>(
     url: string,
     file: File | File[] | FileListLike,
@@ -193,7 +194,7 @@ export abstract class HttpXML {
       });
     }
 
-    return HttpStatic.request<DataType, Err>({
+    return this.request({
       ...(options as unknown as HttpInit),
       method: Methods.POST,
       url,
@@ -237,7 +238,7 @@ export abstract class HttpXML {
       return offset + part.length;
     }, 0);
 
-    return HttpStatic.request<DataType, Err>({
+    return this.request({
       ...(options as unknown as HttpInit),
       method: Methods.POST,
       url,
