@@ -1,6 +1,6 @@
 {
   "name": "@ecosy/core",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "A modular, tree-shakable collection of essential utilities, serialization primitives, and event-driven patterns for modern TypeScript applications",
   "license": "MIT",
   "publishConfig": {
@@ -33,41 +33,53 @@
       "import": "./dist/utilities/index.mjs",
       "require": "./dist/utilities/index.js"
     },
+    "./cache": {
+      "source": "./src/cache/index.ts",
+      "types": "./dist/cache/index.d.ts",
+      "import": "./dist/cache/index.mjs",
+      "require": "./dist/cache/index.js"
+    },
     "./subscriber": {
       "source": "./src/subscriber.ts",
       "types": "./dist/subscriber.d.ts",
       "import": "./dist/subscriber.mjs",
       "require": "./dist/subscriber.js"
     },
-    "./logger": {
-      "source": "./src/logger.ts",
-      "types": "./dist/logger.d.ts",
-      "import": "./dist/logger.mjs",
-      "require": "./dist/logger.js"
-    },
     "./syhemo": {
-      "source": "./src/syhemo.ts",
-      "types": "./dist/syhemo.d.ts",
-      "import": "./dist/syhemo.mjs",
-      "require": "./dist/syhemo.js"
+      "source": "./src/syhemo/index.ts",
+      "types": "./dist/syhemo/index.d.ts",
+      "import": "./dist/syhemo/index.mjs",
+      "require": "./dist/syhemo/index.js"
+    },
+    "./syhemo/logger": {
+      "source": "./src/syhemo/logger.ts",
+      "types": "./dist/syhemo/logger.d.ts",
+      "import": "./dist/syhemo/logger.mjs",
+      "require": "./dist/syhemo/logger.js"
     },
     "./serialize": {
-      "source": "./src/serialize.ts",
-      "types": "./dist/serialize.d.ts",
-      "import": "./dist/serialize.mjs",
-      "require": "./dist/serialize.js"
+      "source": "./src/serialize/index.ts",
+      "types": "./dist/serialize/index.d.ts",
+      "import": "./dist/serialize/index.mjs",
+      "require": "./dist/serialize/index.js"
+    },
+    "./serialize/*": {
+      "source": "./src/serialize/*.ts",
+      "types": "./dist/serialize/*.d.ts",
+      "import": "./dist/serialize/*.mjs",
+      "require": "./dist/serialize/*.js"
     },
     "./slugify": {
-      "source": "./src/slugify.ts",
-      "types": "./dist/slugify.d.ts",
-      "import": "./dist/slugify.mjs",
-      "require": "./dist/slugify.js"
+      "source": "./src/utilities/slugify.ts",
+      "types": "./dist/utilities/slugify.d.ts",
+      "import": "./dist/utilities/slugify.mjs",
+      "require": "./dist/utilities/slugify.js"
     },
     "./searchify": {
-      "source": "./src/searchify.ts",
-      "types": "./dist/searchify.d.ts",
-      "import": "./dist/searchify.mjs",
-      "require": "./dist/searchify.js"
+      "source": "./src/utilities/searchify.ts",
+      "types": "./dist/utilities/searchify.d.ts",
+      "import": "./dist/utilities/searchify.mjs",
+      "require": "./dist/utilities/searchify.js"
     }
   },
   "scripts": {

@@ -16,4 +16,6 @@ export { isLiteralObject, isComplexObject, isObject, isObjectable, hasOwnPropert
 export { merge } from "./merge";
 export { isFormData, objectToFormData } from "./formdata";
 export { MIME_REGEX, sanitizeMime } from "./sanitize-mime";
+export { searchify, type SearchPosition, type SearchResult } from "./searchify";
+export { slugify, DEFAULT_TRANSFORMER, type SlugifyOptions } from "./slugify";
 export { toString, ucfirst, pascalToKebab } from "./string";

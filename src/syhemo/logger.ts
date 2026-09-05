@@ -87,24 +87,32 @@ if (!g[LOG_KEY]) {
 const shared: { buffer: LogEntry[]; errors: number; warns: number; total: number } = g[LOG_KEY];
 
 /**
- * Isomorphic logger with color-coded output.
+ * Syhemo's built-in logging stack: colour-coded output plus the shared buffer
+ * and counters the monitor reads.
  *
- * - **Server (Node.js)**: Uses ANSI escape codes for terminal coloring.
- * - **Browser**: Uses `%c` CSS formatting for DevTools console.
+ * This is NOT a general-purpose logger, and it is not re-exported from the
+ * package index — reach for `@ecosy/logger` for formatters, deliveries and
+ * telemetry standards. What lives here exists so that {@link Syhemo} works out
+ * of the box: it is one concrete implementation of the `SyhemoLogger` and
+ * `SyhemoLogSource` ports, and Syhemo accepts any other.
  *
- * All log entries are buffered in a shared `globalThis` store so that
- * {@link Syhemo} can collect them for monitoring.
+ * An app that wants its own logs to appear in monitoring snapshots has to
+ * write them through something that fills the same buffer — either this class,
+ * or its own implementation of `SyhemoLogSource` handed to Syhemo.
+ *
+ * - **Server (Node.js)**: ANSI escape codes for terminal colour.
+ * - **Browser**: `%c` CSS formatting for DevTools.
  *
  * @example
  * ```ts
- * const logger = new Logger("MyModule");
+ * const logger = new BufferedLogger("MyModule");
  * logger.log("Server started on port 3000");
  * logger.warn("Deprecated API used");
  * logger.error("Connection failed", error);
  * logger.debug("Payload:", data);
  * ```
  */
-export class Logger {
+export class BufferedLogger {
   /**
    * @param context - Label shown in log output, e.g. `[MyModule]`.
    *                  Defaults to `"@ecosy"`.
@@ -198,29 +206,29 @@ export class Logger {
     this.format("VERBOSE", message, ...args);
   }
 
-  // ─── Static methods for Syhemo ───────────────────────────
+  // ─── Log source port (see SyhemoLogSource in ./syhemo) ───
 
   /**
    * Returns a shallow copy of all buffered log entries (non-destructive).
-   * Used by {@link Syhemo} to collect logs for monitoring snapshots.
+   * Satisfies the `getLogs` half of Syhemo's log source port.
    */
   static getLogs(): LogEntry[] {
     return [...shared.buffer];
   }
 
   /**
-   * Returns the current error, warn, and total log counts, then resets
-   * the counters to zero. Used by {@link Syhemo} for per-interval log rate tracking.
+   * Running totals since the process started.
+   *
+   * Non-destructive on purpose: these become Prometheus counters, and a
+   * counter that resets when it is read cannot be shared by two consumers and
+   * cannot produce a correct rate. The scraper takes the difference between
+   * two reads; that is its job, not this one's.
    */
-  static drainCounts(): { errors: number; warns: number; total: number } {
-    const result = {
+  static counts(): { errors: number; warns: number; total: number } {
+    return {
       errors: shared.errors,
       warns: shared.warns,
       total: shared.total,
     };
-    shared.errors = 0;
-    shared.warns = 0;
-    shared.total = 0;
-    return result;
   }
 }

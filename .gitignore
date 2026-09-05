@@ -19,3 +19,4 @@ node_modules
 # Build
 dist
 .turbo
+.next

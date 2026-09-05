@@ -43,7 +43,7 @@ const HIGHLIGHT_SEARCH_OPTIONS: SlugifyOptions = {
  * // { matches: ["Brûlée"], positions: [{ start: 6, length: 6 }] }
  * ```
  */
-export default function searchify(original: string, searchStr: string): SearchResult {
+export function searchify(original: string, searchStr: string): SearchResult {
   const slugified = slugify(searchStr, HIGHLIGHT_SEARCH_OPTIONS);
   const searchLength = slugified.length;
   const result: SearchResult = { matches: [], positions: [] };
