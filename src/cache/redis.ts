@@ -1,4 +1,12 @@
-import { defaultOnError, type CacheErrorHandler, type Cacher, type CacherClass } from "./types";
+import {
+  buildCacheContext,
+  defaultOnError,
+  type CacheContext,
+  type CacheErrorHandler,
+  type CacheInjects,
+  type Cacher,
+  type CacherClass,
+} from "./types";
 
 /**
  * The three commands `RedisCache` issues.
@@ -26,7 +34,9 @@ export interface RedisLike {
   del(key: string): Promise<unknown>;
 }
 
-export interface RedisCacheInit {
+export interface RedisCacheInit<Injects extends CacheInjects = Record<string, never>> {
+  /** Classes constructed per cache instance and handed to `onError`. See `DiskCacheInit.inject`. */
+  inject?: Injects;
   /**
    * Prefix put in front of every key, so one Redis instance can hold more than
    * this cache. Include the separator you want, e.g. `"vendor:"`.
@@ -39,7 +49,7 @@ export interface RedisCacheInit {
    */
   ttlSeconds?: number;
   /** Where a failed write goes. Defaults to `console.warn`. */
-  onError?: CacheErrorHandler;
+  onError?: CacheErrorHandler<CacheContext<Injects>>;
 }
 
 /**
@@ -63,14 +73,19 @@ export interface RedisCacheInit {
  * back as `null` rather than throwing, because a cache holding something
  * unreadable and a cache holding nothing are the same thing to the caller.
  */
-export function RedisCache(client: RedisLike, init: RedisCacheInit = {}): CacherClass {
+export function RedisCache<Injects extends CacheInjects = Record<string, never>>(
+  client: RedisLike,
+  init: RedisCacheInit<Injects> = {},
+): CacherClass {
   const prefix = init.prefix ?? "";
   const ttlSeconds = init.ttlSeconds;
-  const onError = init.onError ?? defaultOnError;
+  const onError = (init.onError ?? defaultOnError) as CacheErrorHandler<CacheContext<Injects>>;
 
   const keyFor = (key: string) => `${prefix}${key}`;
 
   return class implements Cacher {
+    private readonly context = buildCacheContext(init.inject);
+
     async get<Value>(key: string): Promise<Value | null> {
       try {
         const raw = await client.get(keyFor(key));
@@ -86,7 +101,7 @@ export function RedisCache(client: RedisLike, init: RedisCacheInit = {}): Cacher
       try {
         await client.set(keyFor(key), JSON.stringify(value), ttlSeconds);
       } catch (error) {
-        onError(error, key);
+        onError(error, key, this.context);
       }
     }
 

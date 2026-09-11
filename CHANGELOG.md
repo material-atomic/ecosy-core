@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.6.0
+
+### Features
+
+- **Cache `inject`**: `DiskCache` and `RedisCache` take an `inject` map — the same shape `Schedule({ … })` and `Route({ … })` take. Each class is constructed once per cache instance and handed to `onError` as its third argument, so a failed write can go through the app's own logger instead of one reached around the cache. A handler written for `(error, key)` still fits.
+
+### Bug Fixes
+
+- **Build kept dropping `console.warn`**: terser ran with `drop_console: true`, which took the cache's default `onError` with it — a failed cache write in the published package was silent. It now drops only `log`, `info` and `debug`.
+
 ## 0.4.0 (2026-08-24)
 
 ### Features

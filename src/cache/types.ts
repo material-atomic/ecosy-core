@@ -25,16 +25,40 @@ export interface Cacher {
  */
 export type CacherClass = new () => Cacher;
 
-/** Called when a write fails. Receives the cause and the key it was for. */
-export type CacheErrorHandler = (error: unknown, key: string) => void;
+/** A class constructible with no arguments — what an injection map holds. */
+export type InjectClass<Instance = unknown> = new () => Instance;
+
+/** Name to class. Each is constructed once per cache instance. */
+export type CacheInjects = Record<string, InjectClass>;
+
+/** An injection map, constructed: the same names, holding instances. */
+export type CacheContext<Injects extends CacheInjects> = {
+  [K in keyof Injects]: Injects[K] extends InjectClass<infer Instance> ? Instance : never;
+};
+
+/**
+ * Called when a write fails. Receives the cause, the key it was for, and the
+ * context built from the factory's `inject` map — the way to reach an app
+ * logger, since the handler is a plain function fixed at the composition root
+ * and cannot inject for itself. A handler written for `(error, key)` still fits.
+ */
+export type CacheErrorHandler<Context = unknown> = (error: unknown, key: string, context: Context) => void;
+
+/** Builds the context once for a cache instance. */
+export function buildCacheContext<Injects extends CacheInjects>(inject: Injects | undefined): CacheContext<Injects> {
+  const context = {} as Record<string, unknown>;
+  for (const [name, Token] of Object.entries(inject ?? {})) context[name] = new Token();
+  return context as CacheContext<Injects>;
+}
 
 /**
  * Where a failed write goes by default.
  *
- * Note this package is built with terser's `drop_console`, so in the built
- * output this is stripped and a failed write becomes silent. Anything
- * consuming the build and wanting visibility should pass its own handler.
+ * Until 0.6.0 the build dropped every console call, this one included, so a
+ * failed write was silent in the published package. It now keeps `warn` and
+ * `error`. An app with a logger should still pass its own handler — with
+ * `inject`, it can reach that logger.
  */
-export const defaultOnError: CacheErrorHandler = (error, key) => {
+export const defaultOnError: CacheErrorHandler<unknown> = (error, key) => {
   console.warn("[ecosy/cache] write failed:", key, error);
 };

@@ -22,7 +22,11 @@ const external = [];
 // Minification configuration
 const minifyOptions = {
   compress: {
-    drop_console: true,
+    /* Named methods, not `true`. Dropping every console call took
+       `console.warn` with it — including the cache's default onError — so a
+       failed cache write in the build everyone installs said nothing at all.
+       Diagnostics stay; chatter goes. */
+    drop_console: ["log", "info", "debug"],
     drop_debugger: true,
     pure_funcs: ["console.log", "console.info", "console.debug"],
   },

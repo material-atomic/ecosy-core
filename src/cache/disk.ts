@@ -1,10 +1,24 @@
 import { mkdir, readFile, unlink, writeFile } from "node:fs/promises";
 import { join } from "node:path";
-import { defaultOnError, type CacheErrorHandler, type Cacher, type CacherClass } from "./types";
+import {
+  buildCacheContext,
+  defaultOnError,
+  type CacheContext,
+  type CacheErrorHandler,
+  type CacheInjects,
+  type Cacher,
+  type CacherClass,
+} from "./types";
 
-export interface DiskCacheInit {
+export interface DiskCacheInit<Injects extends CacheInjects = Record<string, never>> {
+  /**
+   * Classes to construct for each cache instance, handed to `onError` as its
+   * third argument — the same injection map `Schedule({ … })` and `Route({ … })`
+   * take.
+   */
+  inject?: Injects;
   /** Where a failed write goes. Defaults to `console.warn`. */
-  onError?: CacheErrorHandler;
+  onError?: CacheErrorHandler<CacheContext<Injects>>;
 }
 
 /**
@@ -17,6 +31,12 @@ export interface DiskCacheInit {
  *
  * ```ts
  * Pack(EsmAdapter).cache(DiskCache(configs.env.cache.dir))
+ *
+ * // A failed write reported through the app's own logger:
+ * DiskCache(configs.env.cache.dir, {
+ *   inject: { logger: AppLogger },
+ *   onError: (error, key, { logger }) => logger.warn(`[cache] write failed: ${key}`, error),
+ * });
  * ```
  *
  * The cache survives a restart, which is what separates it from
@@ -33,12 +53,18 @@ export interface DiskCacheInit {
  *
  * @param dir Directory to hold the files. Defaults to `<cwd>/.cache`.
  */
-export function DiskCache(dir?: string, init: DiskCacheInit = {}): CacherClass {
+export function DiskCache<Injects extends CacheInjects = Record<string, never>>(
+  dir?: string,
+  init: DiskCacheInit<Injects> = {},
+): CacherClass {
   const root = dir ?? join(process.cwd(), ".cache");
-  const onError = init.onError ?? defaultOnError;
+  const onError = (init.onError ?? defaultOnError) as CacheErrorHandler<CacheContext<Injects>>;
 
   return class implements Cacher {
     readonly dir = root;
+    /* Built with the instance, not the factory: an injector constructs the
+       class, and what it constructs should be fresh for that instance. */
+    private readonly context = buildCacheContext(init.inject);
 
     private fileFor(key: string): string {
       return join(root, `${encodeURIComponent(key)}.json`);
@@ -59,7 +85,7 @@ export function DiskCache(dir?: string, init: DiskCacheInit = {}): CacherClass {
         await mkdir(root, { recursive: true });
         await writeFile(this.fileFor(key), JSON.stringify(value), "utf-8");
       } catch (error) {
-        onError(error, key);
+        onError(error, key, this.context);
       }
     }
 
