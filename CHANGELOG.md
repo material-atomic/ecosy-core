@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.1 (2026-09-15)
+
+### Fixes
+
+- **Exports**: `@ecosy/core/package.json` resolves; `require("@ecosy/core/package.json")` threw `ERR_PACKAGE_PATH_NOT_EXPORTED` before.
+
 ## 0.6.0
 
 ### Features
