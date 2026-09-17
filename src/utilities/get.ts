@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { toPath } from "./path";
 
 /**
  * Safely retrieves a nested value from an object using a dot/bracket path.
@@ -32,12 +33,7 @@ export function get<Type = unknown>(
 
   // 2. Normalize path into an array of keys
   // Handles both dot notation ("a.b") and bracket notation ("a[0]")
-  const keys = Array.isArray(path)
-    ? path
-    : path
-        .replace(/\[(\d+)]/g, ".$1") // Convert "users[0]" to "users.0"
-        .split(".")
-        .filter(Boolean); // Remove empty segments from leading/trailing dots
+  const keys = toPath(path);
 
   if (keys.length === 0) {
     return data as Type;

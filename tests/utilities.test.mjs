@@ -56,3 +56,59 @@ test("isEqual: deep, including Date, Map and Set", () => {
   assert.equal(isEqual(new Map([["a", 1]]), new Map([["a", 2]])), false);
   assert.equal(isEqual(new Set([1, 2]), new Set([1, 2])), true);
 });
+
+const { set, unset, toPath } = await import(new URL("../dist/utilities/index.mjs", import.meta.url).href);
+
+test("toPath: the same keys get reads", () => {
+  assert.deepEqual(toPath("a.b[0].c"), ["a", "b", "0", "c"]);
+  assert.deepEqual(toPath(".a..b."), ["a", "b"]);
+  assert.deepEqual(toPath(["a.b", "c"]), ["a.b", "c"]);
+  assert.deepEqual(toPath("a[b]"), ["a[b]"]);
+});
+
+test("set: writes in place, returns nothing, get reads it back", () => {
+  const state = { cart: { items: [{ qty: 1 }, { qty: 5 }] } };
+  const items = state.cart.items;
+  assert.equal(set(state, "cart.items[0].qty", 3), undefined);
+  assert.equal(get(state, "cart.items[0].qty"), 3);
+  assert.equal(state.cart.items, items, "existing containers are walked into, not replaced");
+  assert.equal(state.cart.items[1].qty, 5);
+});
+
+test("set: creates missing containers - bracket index makes an array, dot an object", () => {
+  const state = {};
+  set(state, "list[0].name", "a");
+  set(state, "map.0.name", "b");
+  assert.ok(Array.isArray(state.list));
+  assert.deepEqual(state.list, [{ name: "a" }]);
+  assert.ok(!Array.isArray(state.map));
+  assert.deepEqual(state.map, { 0: { name: "b" } });
+});
+
+test("set: destroys what cannot be walked into", () => {
+  const state = { a: 1, d: new Date(0), n: null };
+  set(state, "a.b", 2);
+  set(state, "d.x", 3);
+  set(state, "n[0]", 4);
+  assert.deepEqual(state, { a: { b: 2 }, d: { x: 3 }, n: [4] });
+});
+
+test("set: refuses unsafe segments, empty paths and non-containers", () => {
+  assert.throws(() => set({}, "__proto__.polluted", true), TypeError);
+  assert.throws(() => set({}, "a.constructor.prototype.x", 1), TypeError);
+  assert.equal({}.polluted, undefined);
+  assert.throws(() => set({}, "", 1), TypeError);
+  assert.throws(() => set(null, "a", 1), TypeError);
+  assert.throws(() => set(new Date(), "a", 1), TypeError);
+});
+
+test("unset: deletes object keys, splices array elements, ignores missing paths", () => {
+  const state = { a: { b: 1, c: 2 }, items: ["x", "y", "z"] };
+  unset(state, "a.b");
+  unset(state, "items[1]");
+  unset(state, "missing.deep.path");
+  unset(state, "items[9]");
+  assert.deepEqual(state, { a: { c: 2 }, items: ["x", "z"] });
+  assert.throws(() => unset(state, "__proto__"), TypeError);
+  assert.throws(() => unset(state, []), TypeError);
+});
