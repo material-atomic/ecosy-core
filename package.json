@@ -46,6 +46,18 @@
       "import": "./dist/crypt/index.mjs",
       "require": "./dist/crypt/index.js"
     },
+    "./queue": {
+      "source": "./src/queue/index.ts",
+      "types": "./dist/queue/index.d.ts",
+      "import": "./dist/queue/index.mjs",
+      "require": "./dist/queue/index.js"
+    },
+    "./batch": {
+      "source": "./src/batch/index.ts",
+      "types": "./dist/batch/index.d.ts",
+      "import": "./dist/batch/index.mjs",
+      "require": "./dist/batch/index.js"
+    },
     "./subscriber": {
       "source": "./src/subscriber.ts",
       "types": "./dist/subscriber.d.ts",
