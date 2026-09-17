@@ -64,6 +64,12 @@
       "import": "./dist/session/index.mjs",
       "require": "./dist/session/index.js"
     },
+    "./csrf": {
+      "source": "./src/csrf/index.ts",
+      "types": "./dist/csrf/index.d.ts",
+      "import": "./dist/csrf/index.mjs",
+      "require": "./dist/csrf/index.js"
+    },
     "./subscriber": {
       "source": "./src/subscriber.ts",
       "types": "./dist/subscriber.d.ts",
