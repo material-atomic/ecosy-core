@@ -121,8 +121,8 @@ export function defineCipher(primitive: CipherPrimitive) {
   return defineCipherWith(primitive, false);
 }
 
-/** @internal `trusted` skips the self-test — for primitives this package ships and tests. */
-export function defineCipherWith(primitive: CipherPrimitive, trusted: boolean) {
+/** @internal `isProbe` marks the throwaway token the self-test itself runs on, which must not test again. */
+export function defineCipherWith(primitive: CipherPrimitive, isProbe: boolean) {
   if (!/^[A-Za-z0-9-]+$/.test(primitive.name)) {
     throw new TypeError(`[ecosy/crypt] cipher name "${primitive.name}" may only use letters, digits and dashes`);
   }
@@ -263,9 +263,10 @@ export function defineCipherWith(primitive: CipherPrimitive, trusted: boolean) {
       }
     }
 
-    /* A primitive of your own is tested once, on a throwaway key, before this
-       token does anything with a real one. */
-    let testing: Promise<void> | null = trusted ? Promise.resolve() : null;
+    /* Every token is tested once, on a throwaway key, before it does anything
+       with a real one — the built-in algorithms too, so what ships and what an
+       app writes are held to the same thing. `strict: false` skips it. */
+    let testing: Promise<void> | null = isProbe || !strict ? Promise.resolve() : null;
 
     const ready = () => {
       if (!testing) {
@@ -276,7 +277,7 @@ export function defineCipherWith(primitive: CipherPrimitive, trusted: boolean) {
           strict,
           logger: { warn() {} },
         });
-        testing = assertCrypt(new Probe(), { strict, logger });
+        testing = assertCrypt(new Probe(), { strict });
       }
       return testing;
     };

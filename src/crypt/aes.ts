@@ -95,13 +95,13 @@ function withHmac(
  * ```
  */
 export function AesGcm(options: AesOptions = {}): CryptTokenClass {
-  return defineCipherWith(aesGcm(checkKeyLength("AesGcm", options.keyLength)), true)(options);
+  return defineCipherWith(aesGcm(checkKeyLength("AesGcm", options.keyLength)), false)(options);
 }
 
 /** AES-CBC crypt token, made safe with HMAC-SHA256 (encrypt-then-MAC). */
 export function AesCbc(options: AesOptions = {}): CryptTokenClass {
   const bits = checkKeyLength("AesCbc", options.keyLength);
-  return defineCipherWith(withHmac(`aes-${bits}-cbc-hs256`, bits, 16, (iv) => ({ name: "AES-CBC", iv }), "AES-CBC"), true)(options);
+  return defineCipherWith(withHmac(`aes-${bits}-cbc-hs256`, bits, 16, (iv) => ({ name: "AES-CBC", iv }), "AES-CBC"), false)(options);
 }
 
 /** AES-CTR crypt token, made safe with HMAC-SHA256 (encrypt-then-MAC). */
@@ -109,6 +109,6 @@ export function AesCtr(options: AesOptions = {}): CryptTokenClass {
   const bits = checkKeyLength("AesCtr", options.keyLength);
   return defineCipherWith(
     withHmac(`aes-${bits}-ctr-hs256`, bits, 16, (iv) => ({ name: "AES-CTR", counter: iv, length: 64 }), "AES-CTR"),
-    true,
+    false,
   )(options);
 }

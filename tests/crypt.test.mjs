@@ -129,11 +129,18 @@ const xorPrimitive = (overrides = {}) => ({
   ...overrides,
 });
 
-test("defineCipher: a primitive with no integrity fails check 4 on first use, strict or not", async () => {
-  for (const strict of [true, false]) {
-    const Token = defineCipher(xorPrimitive())({ secret: SECRET, strict, logger: recorder() });
-    await assert.rejects(() => new Token().encrypt("x", P), /self-test 4/);
-  }
+test("defineCipher: a primitive with no integrity fails check 4 on first use", async () => {
+  const Token = defineCipher(xorPrimitive())({ secret: SECRET, logger: recorder() });
+  await assert.rejects(() => new Token().encrypt("x", P), /self-test 4/);
+});
+
+test("strict: false skips the self-test entirely — nothing is checked, nothing is warned", async () => {
+  const logger = recorder();
+  const Token = defineCipher(xorPrimitive())({ secret: SECRET, strict: false, logger });
+  const token = new Token();
+  assert.equal(await token.decrypt(await token.encrypt("x", P), P), "x");
+  assert.equal(logger.lines.filter((line) => line.includes("self-test")).length, 0);
+  await assertCrypt(token, { strict: false });
 });
 
 test("defineCipher: identity primitive fails check 2", async () => {
@@ -172,18 +179,40 @@ test("assertCrypt: a correct hand-written token passes", async () => {
   await assertCrypt(handWritten());
 });
 
-test("assertCrypt: checks 3 and 5 throw when strict, warn when strict is false", async () => {
+test("assertCrypt: every check throws, and a token that says strict: false is not checked", async () => {
   await assert.rejects(() => assertCrypt(handWritten({ fixedIv: true })), /self-test 3/);
   await assert.rejects(() => assertCrypt(handWritten({ ignoreAad: true })), /self-test 5/);
+  await assert.rejects(() => assertCrypt(handWritten({ ignorePurpose: true })), /self-test (8|9)/);
 
-  const logger = recorder();
-  await assertCrypt(handWritten({ fixedIv: true, ignoreAad: true, strict: false }), { logger });
-  assert.equal(logger.lines.some((line) => line.includes("self-test 3")), true);
-  assert.equal(logger.lines.some((line) => line.includes("self-test 5")), true);
+  await assertCrypt(handWritten({ fixedIv: true, ignoreAad: true, ignorePurpose: true, strict: false }));
 });
 
-test("assertCrypt: ignoring purpose always fails, strict or not", async () => {
-  await assert.rejects(() => assertCrypt(handWritten({ ignorePurpose: true, strict: false }), { logger: recorder() }), /self-test (8|9)/);
+test("the built-in algorithms go through the self-test too, and strict: false skips it", async () => {
+  /* Counted at the Web Crypto call, since the self-test leaves no other trace:
+     a first encrypt that also runs the test does several, one that skips it
+     does exactly one. */
+  const real = crypto.subtle.encrypt.bind(crypto.subtle);
+  let calls = 0;
+  crypto.subtle.encrypt = (...args) => {
+    calls++;
+    return real(...args);
+  };
+
+  try {
+    const tested = new (AesGcm({ secret: SECRET }))();
+    await tested.encrypt("v", P);
+    const withTest = calls;
+
+    calls = 0;
+    const skipped = new (AesGcm({ secret: SECRET, strict: false }))();
+    await skipped.encrypt("v", P);
+    const withoutTest = calls;
+
+    assert.equal(withoutTest, 1, "one encryption, nothing else");
+    assert.ok(withTest > withoutTest, `expected the self-test to encrypt as well, got ${withTest} vs ${withoutTest}`);
+  } finally {
+    crypto.subtle.encrypt = real;
+  }
 });
 
 test("ensureCrypt: skips defineCipher tokens, tests others once per class", async () => {

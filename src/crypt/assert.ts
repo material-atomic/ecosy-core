@@ -10,9 +10,9 @@ import type { CryptLogger, CryptToken } from "./types";
 export const SELF_TESTED = Symbol.for("@ecosy/core/crypt:self-tested");
 
 export interface AssertCryptOptions {
-  /** Overrides the token's own `strict`. */
+  /** Overrides the token's own `strict`. `false` skips every check. */
   strict?: boolean;
-  /** Where relaxed checks report. Defaults to `console`. */
+  /** Kept for callers that pass one; nothing is reported, every failure throws. */
   logger?: CryptLogger;
 }
 
@@ -64,32 +64,34 @@ async function verifies(token: CryptToken, data: string, signature: string, purp
 
 /**
  * Proves a crypt token keeps the guarantees everything built on it relies on,
- * using random probe values. Run it in the tests of a token written by hand;
- * session and csrf run it themselves before first use of any token not built
- * with `defineCipher`.
+ * using random probe values. Every token goes through it once before its first
+ * use; run it in the tests of a token written by hand as well.
  *
- * Always an error:
+ * Each check is an error, the first one to fail:
  *  1. `decrypt(encrypt(x))` is not `x`.
- *  2. the ciphertext is `x`, or contains it as text, hex or base64.
+ *  2. the ciphertext is `x`, or contains it as text, hex or base64 — encryption
+ *     that hands the plaintext back.
+ *  3. encrypting the same input twice gives the same output — no random IV.
  *  4. a ciphertext changed in one character still decrypts.
+ *  5. a ciphertext decrypts with a different AAD.
  *  6. `sign` gives two different signatures for the same input.
  *  7. `verify` rejects a real signature, or accepts an altered one or one for other data.
  *  8. a ciphertext decrypts under another purpose.
  *  9. a signature verifies under another purpose.
  *
- * An error unless `strict` is `false`, then a warning:
- *  3. encrypting the same input twice gives the same output — no random IV.
- *  5. a ciphertext decrypts with a different AAD.
+ * `strict: false` skips the whole thing: a token whose guarantees are not
+ * checked is not one to warn about halfway, it is a deliberate choice.
  *
  * @throws Error naming the first check that failed.
  */
 export async function assertCrypt(token: CryptToken, options: AssertCryptOptions = {}): Promise<void> {
   const strict = options.strict ?? token.strict ?? true;
-  const logger = options.logger ?? console;
+
+  if (!strict) return;
+
   const fail = (check: number, message: string) => new Error(`[ecosy/crypt] self-test ${check} failed: ${message}`);
   const relaxed = (check: number, message: string) => {
-    if (strict) throw fail(check, message);
-    logger.warn(`[ecosy/crypt] self-test ${check} relaxed by strict: false — ${message}`);
+    throw fail(check, message);
   };
 
   const probeBytes = randomBytes(24);
