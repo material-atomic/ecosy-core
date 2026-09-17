@@ -29,6 +29,16 @@ export interface CsrfOptions {
   maxAge?: number;
   /** Other origins allowed to send state-changing requests, e.g. `"https://admin.example.com"`. */
   trustedOrigins?: readonly string[];
+  /**
+   * Origins whose requests are the app's own front end, and therefore carry a
+   * session cookie and need a CSRF token — this app's origin and any listed
+   * here. Everything else is an API client: it has no cookie to abuse, so
+   * {@link CsrfToken.check} lets it through, the way Sanctum separates
+   * stateful front-end requests from token-authenticated ones.
+   *
+   * Absent, every request is treated as the front end's.
+   */
+  statefulOrigins?: readonly string[];
   /** Accept `Sec-Fetch-Site: same-site` — sibling subdomains. Default `false`. */
   allowSameSite?: boolean;
   /**
@@ -44,6 +54,13 @@ export interface CsrfOptions {
   secure?: boolean;
   /** Spends nonces on `verify`, for single-use tokens. See {@link CsrfClaim}. */
   claim?: CsrfClaim;
+  /** The cookie and header a script uses, Laravel/axios style. */
+  xsrf?: {
+    /** Cookie name. Readable by scripts on purpose. Default `"XSRF-TOKEN"`. */
+    cookie?: string;
+    /** Header the script sends it back in. Default `"x-xsrf-token"`. */
+    header?: string;
+  };
   login?: {
     /** Cookie name, before any `__Host-` prefix. Default `"csrf_login"`. */
     cookie?: string;
@@ -88,6 +105,14 @@ export interface CsrfVerifyOptions {
   claim?: CsrfClaim | null;
 }
 
+/** What {@link CsrfToken.check} needs: a binding, and where to find the token. */
+export interface CsrfCheckOptions extends CsrfReadOptions {
+  bind: string;
+  /** Defaults to what {@link CsrfToken.cookie} issues. */
+  purpose?: string;
+  claim?: CsrfClaim | null;
+}
+
 export interface CsrfVerified {
   /** Unique per token. Store it under a unique constraint to spend the token with the action. */
   nonce: string;
@@ -97,7 +122,7 @@ export interface CsrfVerified {
 export interface CsrfReadOptions {
   /** Form field. Default `"_csrf"`. */
   field?: string;
-  /** Header. Default `"x-csrf-token"`. */
+  /** Header, in front of the `xsrf` header, which is read either way. Default `"x-csrf-token"`. */
   header?: string;
   /** Bodies declared larger than this are not read for a token. Default 1 MiB. */
   maxBytes?: number;
@@ -139,10 +164,40 @@ export interface CsrfToken {
   verify(token: string | null | undefined, options: CsrfVerifyOptions): Promise<CsrfVerified | null>;
 
   /**
-   * The token a request carries: the header first, then the form field of a
-   * urlencoded or multipart body. Reads a clone, so the body stays readable.
+   * The token a request carries: the headers first (`X-CSRF-Token`, then the
+   * `xsrf` one), then the form field of a urlencoded or multipart body. Reads
+   * a clone, so the body stays readable.
    */
   read(request: Request, options?: CsrfReadOptions): Promise<string | null>;
+
+  /**
+   * Whether this request comes from the app's own front end — the one kind
+   * that carries cookies and so needs a token. See
+   * {@link CsrfOptions.statefulOrigins}.
+   */
+  stateful(request: Request): boolean;
+
+  /**
+   * Hands the browser a token in a cookie a script can read, to send back in
+   * the `xsrf` header. One call before the first write — the front end's
+   * equivalent of Sanctum's `/sanctum/csrf-cookie`.
+   *
+   * Bind it to something the browser keeps: a session id, which means the
+   * session must exist — `session.start()` — before this is called.
+   *
+   * @returns The token, also for rendering into a form.
+   */
+  cookie(jar: CookieJar, options: { bind: string; maxAge?: number }): Promise<string>;
+
+  /**
+   * The whole check for one request, in order: a safe method passes; a request
+   * that is not the front end's passes; the origin must hold; then the token
+   * from header or form must verify.
+   *
+   * `purpose` defaults to the one {@link CsrfToken.cookie} issues, so a form
+   * with a purpose of its own names it here.
+   */
+  check(request: Request, options: CsrfCheckOptions): Promise<boolean>;
 
   readonly login: {
     /** Before sign-in: a browser-bound nonce cookie, and a token for the login form bound to it. */
@@ -168,6 +223,8 @@ export interface CsrfToken {
 export type CsrfClass = ClassType<CsrfToken>;
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS", "TRACE"]);
+/** What `cookie` issues and `check` verifies when no purpose is named. */
+export const REQUEST_PURPOSE = "request";
 const PURPOSE = {
   token: (purpose: string) => `@ecosy/csrf:token:${purpose}`,
   oauthState: "@ecosy/csrf:oauth:state",
@@ -220,6 +277,9 @@ export function Csrf(options: CsrfOptions = {}): CsrfClass {
   const loginMaxAge = options.login?.maxAge ?? 60 * 60 * 1000;
   const oauthMaxAge = options.oauth?.maxAge ?? 10 * 60 * 1000;
   const oauthPath = options.oauth?.path ?? "/";
+  const xsrfCookie = options.xsrf?.cookie ?? "XSRF-TOKEN";
+  const xsrfHeader = options.xsrf?.header ?? "x-xsrf-token";
+  const stateful = options.statefulOrigins && new Set(options.statefulOrigins.map((origin) => new URL(origin).origin));
 
   if (!(maxAge > 0)) throw new TypeError("[ecosy/csrf] maxAge must be positive");
 
@@ -348,7 +408,7 @@ export function Csrf(options: CsrfOptions = {}): CsrfClass {
     }
 
     async read(request: Request, readOptions: CsrfReadOptions = {}): Promise<string | null> {
-      const header = request.headers.get(readOptions.header ?? "x-csrf-token");
+      const header = request.headers.get(readOptions.header ?? "x-csrf-token") ?? request.headers.get(xsrfHeader);
       if (header) return header;
 
       const type = request.headers.get("content-type") ?? "";
@@ -363,6 +423,35 @@ export function Csrf(options: CsrfOptions = {}): CsrfClass {
       } catch {
         return null;
       }
+    }
+
+    stateful(request: Request): boolean {
+      if (!stateful) return true;
+      if (request.headers.has("authorization")) return false;
+
+      const from = request.headers.get("origin") ?? request.headers.get("referer");
+      if (!from) return request.headers.get("sec-fetch-site") === "same-origin";
+
+      const origin = safeOrigin(from);
+      return origin === expectedOrigin(request) || stateful.has(origin);
+    }
+
+    async cookie(jar: CookieJar, cookieOptions_: { bind: string; maxAge?: number }): Promise<string> {
+      const token = await issue({ bind: cookieOptions_.bind, purpose: REQUEST_PURPOSE, maxAge: cookieOptions_.maxAge });
+      /* Readable by scripts on purpose: the front end reads it here and sends
+         it back in a header, which another site cannot do. */
+      await jar.set(xsrfCookie, token, { ...cookieOptions("/", cookieOptions_.maxAge ?? maxAge), httpOnly: false });
+      return token;
+    }
+
+    async check(request: Request, checkOptions: CsrfCheckOptions): Promise<boolean> {
+      if (SAFE_METHODS.has(request.method.toUpperCase())) return true;
+      if (!this.stateful(request)) return true;
+      if (!this.origin(request)) return false;
+
+      const token = await this.read(request, checkOptions);
+      const verified = await verify(token, { ...checkOptions, purpose: checkOptions.purpose ?? REQUEST_PURPOSE });
+      return verified !== null;
     }
 
     readonly login = {

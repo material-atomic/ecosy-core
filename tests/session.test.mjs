@@ -65,6 +65,20 @@ test("a new session is not stored and sets no cookie until something is written"
   assert.equal(b.cookies.size, 0);
 });
 
+test("start saves an empty session, so its id and cookie exist before anything is written", async () => {
+  const b = browser();
+  const AppSession = Session({ encrypt: crypt(), logger: quiet });
+  const session = await new AppSession().load(b.jar());
+  await session.start();
+
+  assert.equal(session.isNew, false);
+  assert.ok(b.cookies.get("sid").startsWith(`${session.id}.`));
+
+  const again = await new AppSession().load(b.jar());
+  assert.equal(again.id, session.id);
+  assert.deepEqual(again.get(), {});
+});
+
 test("set saves, sets a signed cookie, and the next request reads the state back", async () => {
   const b = browser();
   const AppSession = Session({ encrypt: crypt(), logger: quiet });

@@ -121,6 +121,12 @@ export interface SessionHandle {
   unset(path: string | readonly string[]): Promise<void>;
   /** Saves the state as it is now. */
   persist(): Promise<void>;
+  /**
+   * Saves the session even while it is empty, so it — and its cookie — exist
+   * from now on. For an anonymous session something else is bound to before
+   * sign-in: a CSRF cookie, say.
+   */
+  start(): Promise<void>;
 
   /** Ties the session to a user, so `revokeUser` can end it. `null` unties it. */
   setUser(userId: string | null): Promise<void>;

@@ -13,8 +13,10 @@
 
 export {
   Csrf,
+  REQUEST_PURPOSE,
   safeReturnTo,
   type CsrfClaim,
+  type CsrfCheckOptions,
   type CsrfClass,
   type CsrfIssueOptions,
   type CsrfLogger,

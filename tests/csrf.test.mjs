@@ -230,3 +230,57 @@ test("safeReturnTo: only paths on this app", () => {
   }
   assert.equal(safeReturnTo("/api/logout", /^\/(api|login|logout)(\/|$)/), "/");
 });
+
+/* ---------------- Sanctum-style cookie + check ---------------- */
+
+test("cookie + check: a script reads XSRF-TOKEN and sends it back in a header", async () => {
+  const csrf = new (Csrf({ encrypt: crypt(), secure: false }))();
+  const b = browser();
+  const token = await csrf.cookie(b.jar(), { bind: "session-1" });
+
+  const [, name, options] = b.log[0];
+  assert.equal(name, "XSRF-TOKEN");
+  assert.equal(options.httpOnly, false, "the script has to read it");
+  assert.equal(b.cookies.get("XSRF-TOKEN"), token);
+
+  const withHeader = (value, extra = {}) =>
+    post({ "sec-fetch-site": "same-origin", "x-xsrf-token": value, ...extra });
+
+  assert.equal(await csrf.check(withHeader(token), { bind: "session-1" }), true);
+  assert.equal(await csrf.check(withHeader(token), { bind: "session-2" }), false, "another session");
+  assert.equal(await csrf.check(withHeader("forged"), { bind: "session-1" }), false);
+  assert.equal(await csrf.check(post({ "sec-fetch-site": "same-origin" }), { bind: "session-1" }), false, "no token");
+  assert.equal(await csrf.check(new Request("https://app.example.com/x"), { bind: "session-1" }), true, "GET");
+  assert.equal(
+    await csrf.check(withHeader(token, { "sec-fetch-site": "cross-site", origin: "https://evil.example" }), { bind: "session-1" }),
+    false,
+    "the origin check still runs",
+  );
+});
+
+test("check: a form token with a purpose of its own", async () => {
+  const csrf = new (Csrf({ encrypt: crypt() }))();
+  const token = await csrf.issue({ bind: "s", purpose: "change-email" });
+  const form = new Request("https://app.example.com/", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded", "sec-fetch-site": "same-origin" },
+    body: `_csrf=${encodeURIComponent(token)}`,
+  });
+  assert.equal(await csrf.check(form, { bind: "s", purpose: "change-email" }), true);
+  assert.equal(await csrf.check(form.clone(), { bind: "s" }), false, "the default purpose is not this one");
+});
+
+test("stateful: API clients are let through, the front end is checked", async () => {
+  const open = new (Csrf({ encrypt: crypt() }))();
+  assert.equal(open.stateful(post({ origin: "https://anywhere.example" })), true, "no statefulOrigins: everything is the front end");
+
+  const csrf = new (Csrf({ encrypt: crypt(), statefulOrigins: ["https://spa.example.com"] }))();
+  assert.equal(csrf.stateful(post({ origin: "https://app.example.com" })), true, "this app's own origin");
+  assert.equal(csrf.stateful(post({ origin: "https://spa.example.com" })), true);
+  assert.equal(csrf.stateful(post({ origin: "https://other.example" })), false);
+  assert.equal(csrf.stateful(post({ authorization: "Bearer x", origin: "https://spa.example.com" })), false);
+  assert.equal(csrf.stateful(post()), false, "no origin, no referer: not a browser");
+
+  assert.equal(await csrf.check(post({ origin: "https://other.example" }), { bind: "s" }), true, "an API client needs no token");
+  assert.equal(await csrf.check(post({ origin: "https://spa.example.com" }), { bind: "s" }), false, "the front end does");
+});

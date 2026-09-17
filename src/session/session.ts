@@ -70,6 +70,8 @@ interface Live {
   /** Expiry override for an id kept alive by `regenerate`'s grace period. */
   graceUntil?: number;
   destroyed: boolean;
+  /** Save even while empty — set by `start`. */
+  started: boolean;
   order: WriteOrder;
   pendingWrites: number;
   saving: Promise<void> | null;
@@ -146,6 +148,7 @@ export function Session(options: SessionOptions = {}): SessionClass {
     createdAt: Date.now(),
     exists: false,
     destroyed: false,
+    started: false,
     order: new WriteOrder(),
     pendingWrites: 0,
     saving: null,
@@ -219,7 +222,7 @@ export function Session(options: SessionOptions = {}): SessionClass {
   const write = async (live: Live) => {
     if (live.destroyed) return;
     // Nothing worth a cookie yet: an untouched session is never stored.
-    if (!live.exists && Object.keys(live.state).length === 0 && live.user === undefined) return;
+    if (!live.exists && !live.started && Object.keys(live.state).length === 0 && live.user === undefined) return;
 
     const { crypt, store } = await ready();
     const now = Date.now();
@@ -394,6 +397,11 @@ export function Session(options: SessionOptions = {}): SessionClass {
       },
 
       persist: () => persist(live, jar),
+
+      start() {
+        live.started = true;
+        return persist(live, jar);
+      },
 
       async setUser(userId) {
         const { crypt } = await ready();
