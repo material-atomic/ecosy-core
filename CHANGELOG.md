@@ -1,5 +1,28 @@
 # Changelog
 
+## 0.7.0 (2026-09-18)
+
+Everything the Ecosy packages kept rewriting for themselves now lives here, each
+behind its own subpath. Node-only modules stay off the package index, as `cache`
+and `syhemo` already did.
+
+### Features
+
+- **`@ecosy/core/crypt`**: encryption and signing tokens on Web Crypto, so they run on Node, the edge and Workers alike. `AesGcm` (the default), `AesCbc` and `AesCtr` — the last two with HMAC-SHA256 around them, since neither has integrity of its own — all built with `defineCipher`, which takes an algorithm and adds everything easy to get wrong: a key per purpose (HKDF-SHA256), a `secret` list for rotation with the key id carried in the output, a key generated for the process when no secret is given (with the warning that says what that costs), the `e1.<algorithm>.<key id>.<iv>.<ciphertext>` format with its header bound in as AAD, and HMAC signing independent of the cipher. `purpose` is required everywhere: one use of a token can never pass for another. `assertCrypt` puts a token through nine checks — round trip, plaintext in the output, a fixed IV, integrity, AAD, deterministic signing, verification, and purpose separation both ways — and every token goes through it once before its first use. `strict: false` skips it.
+- **`@ecosy/core/session`**: sessions with the id in a signed cookie and the data encrypted in a store, and no tie to any framework — cookies go through a `CookieJar` an adapter builds. `set` (batch → queue → save), `setQueue` (queue → save), `setIn`/`unset` (straight onto the state, then save), `persist`, `start`, `getAsync`, `regenerate` with a grace period for the old id, `destroy`, `setUser` and `revokeUser`. Writes that overlap are settled path by path, by call order, so a `set` held in a batch never undoes a `setIn` made after it. Saving is one at a time per session with a single trailing save, so the store ends on the latest state. `MemoryStore` is the default: `max`, `distance`, `onMax`, optional `persist` of full snapshots, sweeping on read and write, `prune`, `listByUser`, `deleteByUser`.
+- **`@ecosy/core/csrf`**: `origin()` — the check that needs no token and no secret — plus signed tokens for forms and scripts (`issue`, `verify`, `read`, and `claim` for single use), `cookie()`/`check()`/`stateful()` for a front end that reads `XSRF-TOKEN` and sends it back in a header, `login.*` for the nonce before there is a session, and `oauth.*` for a sign-in's state, PKCE and OIDC nonce.
+- **`@ecosy/core/queue`** and **`@ecosy/core/batch`**: work run one at a time per key, and items gathered for a moment then handled together. A queue's timeout frees the caller but holds the key until the task really ends, which is what keeps a task past its deadline from running beside its own retry.
+- **`@ecosy/core/logger`**: `@ecosy/logger` moved in whole, tests included.
+- **`@ecosy/core/schedule`**: `@ecosy/schedule` moved in, now sharing the core injection types and using `Queue` for the lane a task holds. That fixes an overlap: a handler past its deadline is still running, and both its retry and the next fire used to start beside it.
+- **`storageKey`**: `Session`, `MemoryStore`, `Queue` and `Batch` take one. State then lives on `globalThis` under that name, so every copy of a module shares it — needed on Next, where the proxy and the route handlers are separate module graphs. Without it, state belongs to the class, and anchoring the class (`@ecosy/anchor`) does the same thing.
+- **`set` and `unset`**: path writes in `@ecosy/core/utilities`, the counterparts of `get`, sharing its path parser. Both refuse `__proto__`, `constructor` and `prototype`.
+- **Types**: `ClassType`, `InjectMap`, `Injected` and `Promisable` have one definition, in `@ecosy/core/types`. `InjectClass` and `CacheInjects` in `cache` are aliases of them.
+- **Tests**: the package has a suite — `node --test` against `dist`, the thing that ships — and `prepublishOnly` runs it.
+
+### Breaking Changes
+
+- **`Subscriber.shallow` is now `Subscriber.ops`** (`Shallow` is `StateOps`). `merge`, `clone` and `isEqual` are all deep, so the old name said the opposite of what they do. The old name stays as a deprecated alias, so nothing has to change yet.
+
 ## 0.6.1 (2026-09-15)
 
 ### Fixes
