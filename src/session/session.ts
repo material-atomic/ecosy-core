@@ -8,6 +8,7 @@ import { clone } from "../utilities/clone";
 import { get } from "../utilities/get";
 import { merge } from "../utilities/merge";
 import { isLiteralObject } from "../utilities/object";
+import { globalState } from "../utilities/global-state";
 import { toPath } from "../utilities/path";
 import { set as setPath } from "../utilities/set";
 import { unset as unsetPath } from "../utilities/unset";
@@ -105,7 +106,7 @@ export function Session(options: SessionOptions = {}): SessionClass {
   if (!(grace >= 0)) throw new TypeError("[ecosy/session] regenerate.grace must be 0 or more");
 
   const CryptClass = options.encrypt ?? AesGcm({ logger });
-  const StoreClass = options.store ?? MemoryStore({ logger });
+  const StoreClass = options.store ?? MemoryStore({ logger, storageKey: options.storageKey });
 
   let parts: { crypt: CryptToken; store: SessionStore; queue?: QueueToken; batch?: BatchToken } | null = null;
   let cryptReady: Promise<void> | null = null;
@@ -129,7 +130,7 @@ export function Session(options: SessionOptions = {}): SessionClass {
     return deps();
   };
 
-  const lives = new Map<string, Live>();
+  const lives = globalState("session:lives", options.storageKey, () => new Map<string, Live>());
 
   const cookieOptions = (): CookieOptions => ({
     httpOnly: true,

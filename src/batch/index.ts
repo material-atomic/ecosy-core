@@ -10,6 +10,7 @@
  */
 
 import type { ClassType, Promisable } from "../types";
+import { globalState } from "../utilities/global-state";
 
 export interface BatchOptions {
   /**
@@ -20,6 +21,8 @@ export interface BatchOptions {
   window?: number;
   /** Items after which a group is flushed without waiting for the window. `0` or absent: no limit. */
   max?: number;
+  /** Shares the groups on `globalThis` under this name. See `QueueOptions.storageKey`. */
+  storageKey?: string;
 }
 
 export interface BatchHandler<Item, Result = void> {
@@ -83,9 +86,11 @@ export function Batch(options: BatchOptions = {}): BatchClass {
   if (!(windowMs >= 0)) throw new TypeError("[ecosy/batch] window must be 0 or more");
   if (!(max >= 0)) throw new TypeError("[ecosy/batch] max must be 0 or more");
 
-  const gathering = new Map<string, Gathering>();
-  /** Flushes started but not finished, per group — what `pending` also waits for. */
-  const flushing = new Map<string, Set<Promise<void>>>();
+  const { gathering, flushing } = globalState("batch", options.storageKey, () => ({
+    gathering: new Map<string, Gathering>(),
+    /** Flushes started but not finished, per group — what `pending` also waits for. */
+    flushing: new Map<string, Set<Promise<void>>>(),
+  }));
 
   const run = (group: string, batch: Gathering): Promise<void> => {
     if (gathering.get(group) === batch) gathering.delete(group);

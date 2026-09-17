@@ -79,6 +79,14 @@ export interface SessionOptions {
   cookie?: CookieOptions & { name?: string };
   /** Milliseconds a session lives after its last save. Default 7 days. */
   maxAge?: number;
+  /**
+   * Keeps the live states on `globalThis` under this name, and — when no
+   * `store` is given — the default MemoryStore's records under it too. Every
+   * copy of the module then shares one session state: needed on Next, where
+   * the proxy and the route handlers are separate module graphs. Anchoring the
+   * class with `@ecosy/anchor` does the same.
+   */
+  storageKey?: string;
   regenerate?: {
     /** Milliseconds the old id still works after `regenerate`. Default 30 000. */
     grace?: number;

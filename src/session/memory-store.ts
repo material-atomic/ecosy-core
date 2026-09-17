@@ -1,4 +1,5 @@
 import type { Promisable } from "../types";
+import { globalState } from "../utilities/global-state";
 import type { SessionLogger, SessionMeta, SessionRecord, SessionStore, SessionStoreClass } from "./types";
 
 export interface MemoryStoreMaxInfo {
@@ -37,6 +38,12 @@ export interface MemoryStoreOptions {
   persist?: MemoryStorePersist;
   /** Milliseconds between sweeps of expired records. `0` — the default — sweeps only while reading and writing. */
   sweepInterval?: number;
+  /**
+   * Keeps the records on `globalThis` under this name, so every copy of the
+   * module — Next's proxy and route layers, say — reads and writes the same
+   * ones. Without it the records belong to the class.
+   */
+  storageKey?: string;
   logger?: SessionLogger;
 }
 
@@ -68,28 +75,30 @@ export function MemoryStore(options: MemoryStoreOptions = {}): SessionStoreClass
 
   /* Insertion order is write order: a record is re-inserted on every write, so
      the oldest writes — the likeliest to have expired — come first. */
-  const records = new Map<string, SessionRecord>();
-
-  let loaded: Promise<void> | null = null;
-  let saveTimer: ReturnType<typeof setTimeout> | null = null;
-  let sweepTimer: ReturnType<typeof setInterval> | null = null;
-  /** Makes room one write at a time, so two writes never both decide on the same full store. */
-  let roomChain: Promise<unknown> = Promise.resolve();
+  const shared = globalState("session:memory-store", options.storageKey, () => ({
+    records: new Map<string, SessionRecord>(),
+    loaded: null as Promise<void> | null,
+    saveTimer: null as ReturnType<typeof setTimeout> | null,
+    sweepTimer: null as ReturnType<typeof setInterval> | null,
+    /** Makes room one write at a time, so two writes never both decide on the same full store. */
+    roomChain: Promise.resolve() as Promise<unknown>,
+  }));
+  const records = shared.records;
 
   const expired = (record: SessionRecord, now = Date.now()) => record.expiresAt <= now;
 
   const scheduleSave = () => {
     const persist = options.persist;
     if (!persist) return;
-    if (saveTimer) clearTimeout(saveTimer);
-    saveTimer = setTimeout(() => {
-      saveTimer = null;
+    if (shared.saveTimer) clearTimeout(shared.saveTimer);
+    shared.saveTimer = setTimeout(() => {
+      shared.saveTimer = null;
       pruneNow();
       Promise.resolve(persist.save([...records.entries()])).catch((error) =>
         logger.warn("[ecosy/session] MemoryStore persist.save failed:", error),
       );
     }, persist.delay ?? 1000);
-    (saveTimer as { unref?: () => void }).unref?.();
+    (shared.saveTimer as { unref?: () => void }).unref?.();
   };
 
   const pruneNow = () => {
@@ -105,8 +114,8 @@ export function MemoryStore(options: MemoryStoreOptions = {}): SessionStoreClass
   };
 
   const ready = () => {
-    if (!loaded) {
-      loaded = (async () => {
+    if (!shared.loaded) {
+      shared.loaded = (async () => {
         const initial = options.persist ? await options.persist.load() : null;
         const now = Date.now();
         for (const [key, record] of initial ?? []) {
@@ -114,14 +123,14 @@ export function MemoryStore(options: MemoryStoreOptions = {}): SessionStoreClass
         }
       })();
 
-      if (options.sweepInterval && !sweepTimer) {
-        sweepTimer = setInterval(() => {
+      if (options.sweepInterval && !shared.sweepTimer) {
+        shared.sweepTimer = setInterval(() => {
           if (pruneNow()) scheduleSave();
         }, options.sweepInterval);
-        (sweepTimer as { unref?: () => void }).unref?.();
+        (shared.sweepTimer as { unref?: () => void }).unref?.();
       }
     }
-    return loaded;
+    return shared.loaded;
   };
 
   const sweepSome = () => {
@@ -202,8 +211,8 @@ export function MemoryStore(options: MemoryStoreOptions = {}): SessionStoreClass
 
       sweepSome();
 
-      const admitted = roomChain.then(() => decide(key, record));
-      roomChain = admitted.catch(() => undefined);
+      const admitted = shared.roomChain.then(() => decide(key, record));
+      shared.roomChain = admitted.catch(() => undefined);
 
       if (await admitted) {
         records.set(key, record);

@@ -10,6 +10,7 @@
  */
 
 import type { ClassType, Promisable } from "../types";
+import { globalState } from "../utilities/global-state";
 
 export interface QueueOptions {
   /**
@@ -25,6 +26,12 @@ export interface QueueOptions {
   retry?: number;
   /** Milliseconds before attempt `attempt + 1`. Default `min(2^attempt × 1000, 30 000)`. */
   backoff?: (attempt: number) => number;
+  /**
+   * Shares the lanes on `globalThis` under this name, so every copy of the
+   * module — one per Next layer, say — queues in the same lanes. Without it the
+   * lanes belong to the class; anchoring the class shares them just as well.
+   */
+  storageKey?: string;
 }
 
 export interface QueueToken {
@@ -85,7 +92,7 @@ export function Queue(options: QueueOptions = {}): QueueClass {
 
   if (!(timeout >= 0)) throw new TypeError("[ecosy/queue] timeout must be 0 or more");
 
-  const lanes = new Map<string, Lane>();
+  const lanes = globalState("queue", options.storageKey, () => new Map<string, Lane>());
 
   const attempt = async <Result>(task: () => Promisable<Result>): Promise<Result> => {
     for (let tries = 0; ; tries++) {
