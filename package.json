@@ -82,6 +82,12 @@
       "import": "./dist/logger/*.mjs",
       "require": "./dist/logger/*.js"
     },
+    "./schedule": {
+      "source": "./src/schedule/index.ts",
+      "types": "./dist/schedule/index.d.ts",
+      "import": "./dist/schedule/index.mjs",
+      "require": "./dist/schedule/index.js"
+    },
     "./subscriber": {
       "source": "./src/subscriber.ts",
       "types": "./dist/subscriber.d.ts",
@@ -128,8 +134,9 @@
   "scripts": {
     "clean": "rimraf dist",
     "build": "eslint src/ && rollup -c",
-    "test": "yarn build && yarn test:run",
+    "test": "yarn build && yarn types:test && yarn test:run",
     "test:run": "node --test \"tests/*.test.mjs\"",
+    "types:test": "tsc --ignoreConfig --noEmit --strict --skipLibCheck --target ES2022 --module esnext --moduleResolution bundler --lib esnext,dom --types node types-test/*.ts",
     "prepublishOnly": "yarn clean && yarn build && yarn test:run",
     "dev": "rollup -c --watch",
     "lint": "eslint src/",
