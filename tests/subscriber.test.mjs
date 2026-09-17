@@ -34,3 +34,27 @@ test("subscribe: unsubscribe stops delivery", () => {
   sub.dispatch("ping");
   assert.equal(calls, 1);
 });
+
+test("ops: replaceable, and `shallow` still names the same thing", () => {
+  const sub = new Subscriber({ n: 1 });
+  let compared = 0;
+
+  sub.ops = {
+    isEqual: (a, b) => {
+      compared++;
+      return JSON.stringify(a) === JSON.stringify(b);
+    },
+  };
+
+  assert.equal(typeof sub.shallow.merge, "function");
+  assert.equal(typeof sub.ops.clone, "function");
+
+  sub.setState({ n: 1 });
+  sub.setState({ n: 2 });
+  assert.equal(compared, 2, "the replacement is what decides a change");
+  assert.equal(sub.getState().n, 2);
+
+  sub.shallow = { isEqual: () => true };
+  sub.setState({ n: 3 });
+  assert.equal(sub.getState().n, 2, "no change, by the ops set through the old name");
+});

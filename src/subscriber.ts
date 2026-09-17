@@ -14,11 +14,24 @@ export type SubcribeHandler<Payload = never> = [Payload] extends [never]
 class SubscribeListener extends Set<SubcribeHandler> {}
 class SubscribeListeners extends Map<SubscribeChannel, SubscribeListener> {}
 
-export interface Shallow {
+/**
+ * How a subscriber works with its state: how a partial is merged in, how the
+ * state is copied for a listener, and what counts as a change. Replace any of
+ * them to change those answers — a cheaper comparison for a large state, say.
+ *
+ * All three are deep by default.
+ */
+export interface StateOps {
   merge<AsType>(source: unknown, target: unknown, cloneDeep?: (data: unknown) => unknown): AsType;
   clone<DataType>(data: DataType): DataType;
   isEqual(value1: unknown, value2: unknown): boolean;
 }
+
+/**
+ * @deprecated The old name for {@link StateOps}. Nothing about these is
+ * shallow: `merge`, `clone` and `isEqual` all go all the way down.
+ */
+export type Shallow = StateOps;
 
 export type ExtendedEventExpect = {
   readonly [key: string]: {
@@ -62,7 +75,7 @@ export class Subscriber<State extends LiteralObject, Events = {}> {
   private _state: State = {} as State;
   private listeners = new SubscribeListeners();
 
-  private _shallow: Shallow = {
+  private _ops: StateOps = {
     merge,
     clone,
     isEqual,
@@ -70,16 +83,29 @@ export class Subscriber<State extends LiteralObject, Events = {}> {
 
   readonly _events = freeze(defaultEvents) as Freezable<DefaultEvents & Events>;
 
-  get shallow(): Freezable<Shallow> {
+  /** {@link StateOps} in use. Assign a partial to replace some of them. */
+  get ops(): Freezable<StateOps> {
     return freeze({
-      merge: this._shallow.merge,
-      clone: this._shallow.clone,
-      isEqual: this._shallow.isEqual,
+      merge: this._ops.merge,
+      clone: this._ops.clone,
+      isEqual: this._ops.isEqual,
     });
   }
 
-  set shallow(shallow: Shallow | Partial<Shallow>) {
-    this._shallow = this._shallow.merge(this._shallow, shallow);
+  set ops(ops: StateOps | Partial<StateOps>) {
+    this._ops = this._ops.merge(this._ops, ops);
+  }
+
+  /**
+   * @deprecated Use {@link Subscriber.ops}. The name said shallow while every
+   * one of these is deep; it stays as an alias so existing code keeps working.
+   */
+  get shallow(): Freezable<StateOps> {
+    return this.ops;
+  }
+
+  set shallow(ops: StateOps | Partial<StateOps>) {
+    this.ops = ops;
   }
 
   constructor(initialState?: State | PartialLiteral<State>, events?: Events) {
@@ -138,11 +164,11 @@ export class Subscriber<State extends LiteralObject, Events = {}> {
    * @param state - Full or partial state to merge.
    */
   setState(state: State | PartialLiteral<State>) {
-    const nextState = this._shallow.merge<State>(this._state, state);
+    const nextState = this._ops.merge<State>(this._state, state);
 
-    if (!this._shallow.isEqual(this._state, nextState)) {
+    if (!this._ops.isEqual(this._state, nextState)) {
       this._state = nextState;
-      this.dispatch(this._events.state.change, this._shallow.clone(nextState));
+      this.dispatch(this._events.state.change, this._ops.clone(nextState));
     }
   }
 
