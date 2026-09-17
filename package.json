@@ -58,6 +58,12 @@
       "import": "./dist/batch/index.mjs",
       "require": "./dist/batch/index.js"
     },
+    "./session": {
+      "source": "./src/session/index.ts",
+      "types": "./dist/session/index.d.ts",
+      "import": "./dist/session/index.mjs",
+      "require": "./dist/session/index.js"
+    },
     "./subscriber": {
       "source": "./src/subscriber.ts",
       "types": "./dist/subscriber.d.ts",
