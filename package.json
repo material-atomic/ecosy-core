@@ -40,6 +40,12 @@
       "import": "./dist/cache/index.mjs",
       "require": "./dist/cache/index.js"
     },
+    "./crypt": {
+      "source": "./src/crypt/index.ts",
+      "types": "./dist/crypt/index.d.ts",
+      "import": "./dist/crypt/index.mjs",
+      "require": "./dist/crypt/index.js"
+    },
     "./subscriber": {
       "source": "./src/subscriber.ts",
       "types": "./dist/subscriber.d.ts",
