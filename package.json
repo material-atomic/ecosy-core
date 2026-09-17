@@ -86,7 +86,9 @@
   "scripts": {
     "clean": "rimraf dist",
     "build": "eslint src/ && rollup -c",
-    "prepublishOnly": "yarn clean && yarn build",
+    "test": "yarn build && yarn test:run",
+    "test:run": "node --test \"tests/*.test.mjs\"",
+    "prepublishOnly": "yarn clean && yarn build && yarn test:run",
     "dev": "rollup -c --watch",
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",

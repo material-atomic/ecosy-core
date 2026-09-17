@@ -1,3 +1,5 @@
+import type { ClassType, InjectMap } from "../types/inject";
+
 /**
  * What a cache must do, and nothing more.
  *
@@ -25,11 +27,11 @@ export interface Cacher {
  */
 export type CacherClass = new () => Cacher;
 
-/** A class constructible with no arguments — what an injection map holds. */
-export type InjectClass<Instance = unknown> = new () => Instance;
+/** A class constructible with no arguments — what an injection map holds. Same as `ClassType`. */
+export type InjectClass<Instance = unknown> = ClassType<Instance>;
 
-/** Name to class. Each is constructed once per cache instance. */
-export type CacheInjects = Record<string, InjectClass>;
+/** Name to class. Each is constructed once per cache instance. Same as `InjectMap`. */
+export type CacheInjects = InjectMap;
 
 /** An injection map, constructed: the same names, holding instances. */
 export type CacheContext<Injects extends CacheInjects> = {
