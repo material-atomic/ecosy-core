@@ -133,7 +133,6 @@ export function defineCipherWith(primitive: CipherPrimitive, trusted: boolean) {
   const algorithm = primitive.name;
 
   return function cipherFactory(options: CipherOptions = {}): CryptTokenClass {
-    const secrets = normaliseSecrets(options.secret);
     const logger = options.logger ?? console;
     const strict = options.strict ?? true;
 
@@ -141,6 +140,12 @@ export function defineCipherWith(primitive: CipherPrimitive, trusted: boolean) {
 
     const keys = () => {
       if (!keyring) {
+        /* Read on first use, not when the token is built: a module that builds
+           one runs at build time too, where the environment holding the secret
+           usually is not there yet. A missing secret is a problem for the
+           request that needs it, not for the build. */
+        const secrets = normaliseSecrets(options.secret);
+
         if (!secrets) {
           warnOnce(
             logger,

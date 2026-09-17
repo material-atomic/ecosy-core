@@ -97,9 +97,14 @@ test("no secret: one generated key per process, shared by every token, warned on
   assert.equal(logger.lines.filter((line) => line.includes("No secret given")).length <= 1, true);
 });
 
-test("secret validation", () => {
-  assert.throws(() => AesGcm({ secret: "" }), TypeError);
-  assert.throws(() => AesGcm({ secret: [] }), TypeError);
+test("secret is read on first use, not when the token is built", async () => {
+  // A build-time evaluation of `AesGcm({ secret: process.env.SECRET })` must not throw.
+  const Empty = AesGcm({ secret: "" });
+  const Missing = AesGcm({ secret: [] });
+  await assert.rejects(() => new Empty().sign("x", P), TypeError);
+  await assert.rejects(() => new Missing().encrypt("x", P), TypeError);
+
+  // Anything not about the secret still fails immediately.
   assert.throws(() => AesGcm({ keyLength: 192 }), TypeError);
 });
 
