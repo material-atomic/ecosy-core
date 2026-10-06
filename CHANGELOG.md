@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.8.0 (2026-10-06)
+
+### Features
+
+- **`Subscriber.setState(state, { merge })`**: how a new state goes over the current one, per call. `"deep"`, the default and what every call did before, merges objects all the way down, so a key is only ever added or replaced. `"shallow"` replaces each top-level key given whole, so a key a nested object no longer has is gone — for a whole new value of a key, such as a slice a reducer computed. Listeners still get a detached copy, nothing is dispatched when nothing changed, and prototype-polluting keys are refused in both.
+- **`mergeShallow`** in `@ecosy/core/utilities`: the one-level counterpart of `merge`.
+
 ## 0.7.0 (2026-09-18)
 
 Everything the Ecosy packages kept rewriting for themselves now lives here, each

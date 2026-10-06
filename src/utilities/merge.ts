@@ -49,3 +49,34 @@ export function merge<AsType>(source: unknown, target: unknown, cloneDeep = clon
 
   return cloneDeep(target) as AsType;
 }
+
+/**
+ * Merges `target` into `source` one level deep: each key of `target` replaces the same key of `source` whole, and
+ * keys `target` does not have are kept. Where {@link merge} would keep a key that a nested object no longer has,
+ * this drops it — the new value is the value. Prototype-polluting keys are rejected, as in {@link merge}.
+ *
+ * @example
+ * ```ts
+ * mergeShallow({ a: 1, b: { c: 2, d: 3 } }, { b: { c: 2 } });
+ * // { a: 1, b: { c: 2 } }
+ * ```
+ */
+export function mergeShallow<AsType>(source: unknown, target: unknown, cloneDeep = clone): AsType {
+  if (target === undefined) {
+    return cloneDeep(source) as AsType;
+  }
+
+  if (isLiteralObject(source) && isLiteralObject(target)) {
+    const result: Record<string, unknown> = { ...source };
+
+    Object.keys(target).forEach((key) => {
+      if (isValidKey(key)) {
+        result[key] = cloneDeep((target as Record<string, unknown>)[key]);
+      }
+    });
+
+    return result as AsType;
+  }
+
+  return cloneDeep(target) as AsType;
+}

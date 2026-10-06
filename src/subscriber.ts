@@ -2,7 +2,7 @@ import { clone } from "./utilities/clone";
 import { freeze } from "./utilities/freeze";
 import { isEqual } from "./utilities/is-equal";
 import { isLiteralObject } from "./utilities/object";
-import { merge } from "./utilities/merge";
+import { merge, mergeShallow } from "./utilities/merge";
 import { ucfirst } from "./utilities/string";
 import type { Freezable, LiteralObject, PartialLiteral, ToString } from "./types/built-in";
 
@@ -25,6 +25,21 @@ export interface StateOps {
   merge<AsType>(source: unknown, target: unknown, cloneDeep?: (data: unknown) => unknown): AsType;
   clone<DataType>(data: DataType): DataType;
   isEqual(value1: unknown, value2: unknown): boolean;
+}
+
+/**
+ * How {@link Subscriber.setState} puts a new state over the current one.
+ *
+ * - `"deep"` (the default): objects are merged all the way down; a key is only ever added or replaced, never
+ *   removed — a partial state is enough to change one value.
+ * - `"shallow"`: each top-level key given replaces the current one whole, so what a nested object no longer has is
+ *   gone. For a whole new value of a key — a slice a reducer computed — where a key deleted from it must stay deleted.
+ */
+export type MergeMode = "deep" | "shallow";
+
+/** Options for one {@link Subscriber.setState}. */
+export interface SetStateOptions {
+  merge?: MergeMode;
 }
 
 /**
@@ -162,9 +177,14 @@ export class Subscriber<State extends LiteralObject, Events = {}> {
    * Merges new state and dispatches a state change event if the state has changed.
    *
    * @param state - Full or partial state to merge.
+   * @param options - `merge`: `"deep"` (the default, {@link StateOps.merge}) or `"shallow"`, where each top-level
+   *   key given replaces the current one whole — see {@link MergeMode}.
    */
-  setState(state: State | PartialLiteral<State>) {
-    const nextState = this._ops.merge<State>(this._state, state);
+  setState(state: State | PartialLiteral<State>, options?: SetStateOptions) {
+    const nextState =
+      options?.merge === "shallow"
+        ? mergeShallow<State>(this._state, state, this._ops.clone)
+        : this._ops.merge<State>(this._state, state);
 
     if (!this._ops.isEqual(this._state, nextState)) {
       this._state = nextState;

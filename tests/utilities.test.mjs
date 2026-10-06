@@ -2,7 +2,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-const { get, merge, clone, isEqual } = await import(new URL("../dist/utilities/index.mjs", import.meta.url).href);
+const { get, merge, mergeShallow, clone, isEqual } = await import(new URL("../dist/utilities/index.mjs", import.meta.url).href);
 
 test("get: dot, bracket and array paths", () => {
   const data = { users: [{ name: "Alice" }] };
@@ -35,6 +35,14 @@ test("merge: deep for plain objects, arrays replaced whole", () => {
 
 test("merge: prototype-polluting keys are ignored", () => {
   const result = merge({}, JSON.parse('{"__proto__":{"polluted":true},"constructor":{"x":1}}'));
+  assert.equal({}.polluted, undefined);
+  assert.equal(Object.prototype.hasOwnProperty.call(result, "constructor"), false);
+});
+
+test("mergeShallow: each key given replaces the current one whole; the rest stay", () => {
+  assert.deepEqual(mergeShallow({ a: 1, b: { c: 2, d: 3 } }, { b: { c: 2 } }), { a: 1, b: { c: 2 } });
+  assert.deepEqual(mergeShallow({ a: 1 }, undefined), { a: 1 });
+  const result = mergeShallow({}, JSON.parse('{"__proto__":{"polluted":true},"constructor":{"x":1}}'));
   assert.equal({}.polluted, undefined);
   assert.equal(Object.prototype.hasOwnProperty.call(result, "constructor"), false);
 });

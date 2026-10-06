@@ -58,3 +58,41 @@ test("ops: replaceable, and `shallow` still names the same thing", () => {
   sub.setState({ n: 3 });
   assert.equal(sub.getState().n, 2, "no change, by the ops set through the old name");
 });
+
+test("setState: deep by default keeps what a nested object no longer has", () => {
+  const sub = new Subscriber({ files: { a: 1, b: 2 }, other: 1 });
+  sub.setState({ files: { a: 1 } });
+  assert.deepEqual(sub.getState(), { files: { a: 1, b: 2 }, other: 1 });
+});
+
+test("setState shallow: a key given replaces the current one whole; keys not given stay", () => {
+  const sub = new Subscriber({ files: { a: 1, b: 2 }, list: [1, 2], other: { x: 1 } });
+  const seen = [];
+  sub.onStateChange((state) => seen.push(state));
+
+  sub.setState({ files: { a: 1 }, list: [1] }, { merge: "shallow" });
+
+  assert.deepEqual(sub.getState(), { files: { a: 1 }, list: [1], other: { x: 1 } });
+  assert.equal(seen.length, 1);
+  assert.notEqual(seen[0], sub.getState(), "listeners still get a detached copy");
+});
+
+test("setState shallow: nothing changed, nobody notified; the given value is copied, not kept", () => {
+  const sub = new Subscriber({ files: { a: 1 } });
+  const seen = [];
+  sub.onStateChange((state) => seen.push(state));
+  sub.setState({ files: { a: 1 } }, { merge: "shallow" });
+  assert.equal(seen.length, 0);
+
+  const given = { a: 2 };
+  sub.setState({ files: given }, { merge: "shallow" });
+  given.a = 3;
+  assert.deepEqual(sub.getState(), { files: { a: 2 } });
+});
+
+test("setState shallow: refuses prototype-polluting keys", () => {
+  const sub = new Subscriber({ a: 1 });
+  sub.setState(JSON.parse('{"__proto__": {"polluted": true}, "b": 2}'), { merge: "shallow" });
+  assert.deepEqual(sub.getState(), { a: 1, b: 2 });
+  assert.equal({}.polluted, undefined);
+});

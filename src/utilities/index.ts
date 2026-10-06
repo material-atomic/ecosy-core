@@ -16,7 +16,7 @@ export { toPath } from "./path";
 export { isEqual } from "./is-equal";
 export { isFunction } from "./is-function";
 export { isLiteralObject, isComplexObject, isObject, isObjectable, hasOwnProperty } from "./object";
-export { merge } from "./merge";
+export { merge, mergeShallow } from "./merge";
 export { isFormData, objectToFormData } from "./formdata";
 export { MIME_REGEX, sanitizeMime } from "./sanitize-mime";
 export { searchify, type SearchPosition, type SearchResult } from "./searchify";
