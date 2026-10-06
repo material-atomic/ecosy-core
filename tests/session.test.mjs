@@ -317,15 +317,17 @@ test("destroy removes the record and the cookie", async () => {
 test("an expired session is not loaded", async () => {
   const b = browser();
   const { Store } = recordingStore();
-  const AppSession = Session({ encrypt: crypt(), store: Store, maxAge: 30, logger: quiet });
+  /* 400 ms: room for a loaded machine (prepublishOnly runs right after a build) between saving and reading back.
+     At 30 ms the "still valid" read sometimes came after the expiry. */
+  const AppSession = Session({ encrypt: crypt(), store: Store, maxAge: 400, logger: quiet });
   const session = await new AppSession().load(b.jar());
   await session.set({ x: 1 });
 
   // Same store, a separate class: nothing cached in memory, only what the store holds.
-  const Fresh = Session({ encrypt: crypt(), store: Store, maxAge: 30, logger: quiet });
+  const Fresh = Session({ encrypt: crypt(), store: Store, maxAge: 400, logger: quiet });
   assert.equal((await new Fresh().load(b.jar())).isNew, false, "still valid");
-  await sleep(60);
-  const Later = Session({ encrypt: crypt(), store: Store, maxAge: 30, logger: quiet });
+  await sleep(600);
+  const Later = Session({ encrypt: crypt(), store: Store, maxAge: 400, logger: quiet });
   assert.equal((await new Later().load(b.jar())).isNew, true, "expired");
 });
 

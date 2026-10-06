@@ -110,6 +110,11 @@ test("a theme is data: swap one colour", () => {
 
 const listen = (server) => new Promise((r) => server.listen(0, "127.0.0.1", () => r(server.address().port)));
 
+/* Until `done()` holds, up to five seconds: delivery is asynchronous, and a fixed wait failed on a loaded machine. */
+const until = async (done) => {
+  for (const end = Date.now() + 5000; !done() && Date.now() < end; ) await new Promise((r) => setTimeout(r, 10));
+};
+
 test("one logger: PRETTY to the console and GELF to Graylog over HTTP", async () => {
   const bodies = [];
   const server = createServer((req, res) => {
@@ -120,7 +125,7 @@ test("one logger: PRETTY to the console and GELF to Graylog over HTTP", async ()
   const graylog = new GraylogDelivery({ url: `http://127.0.0.1:${port}/gelf`, service: "sniprender" });
   const log = new (Logger({ standard: "PRETTY", adapter: [out, graylog] }))("Router");
   log.warn("slow request", { ms: 812 });
-  await new Promise((r) => setTimeout(r, 200));
+  await until(() => bodies.length > 0);
   server.close();
 
   assert.match(out.calls[0].args[0], /WARN \[Router\] slow request/, "the console got the PRETTY line");
@@ -136,7 +141,7 @@ test("Graylog unreachable or refusing: reported through onError, never thrown at
   const errors = [];
   const log = new (Logger({ adapter: new GraylogDelivery({ url: `http://127.0.0.1:${port}/gelf`, onError: (e) => errors.push(String(e)) }) }))();
   assert.doesNotThrow(() => log.error("x"));
-  await new Promise((r) => setTimeout(r, 200));
+  await until(() => errors.length > 0);
   server.close();
   assert.match(errors[0] ?? "", /Graylog answered 500/);
   assert.throws(() => new GraylogDelivery({}), /needs `url`/);
@@ -153,7 +158,8 @@ test("UDP: one datagram when it fits, GELF chunks when it does not", async () =>
 
   log.info("small");
   log.info("x".repeat(3000));
-  await new Promise((r) => setTimeout(r, 300));
+  /* The small datagram, then every chunk of the large one (each says how many there are, in byte 11). */
+  await until(() => got.length > 1 && got.length === 1 + got[1][11]);
   await udp.close(); sock.close();
 
   assert.equal(JSON.parse(got[0].toString()).short_message, "small");
